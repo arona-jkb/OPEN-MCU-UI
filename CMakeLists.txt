@@ -42,9 +42,17 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
 )
 
+# 1. 添加头文件路径
+include_directories(Core/u8g2)
+# 2. 自动收集所有 .c 源文件
+file(GLOB U8G2_SOURCES "Core/u8g2/*.c")
+# 3. 将源文件添加到可执行文件
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${U8G2_SOURCES})
+
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
+    Core/Src/stm32_u8g2.c
 )
 
 # Add include paths

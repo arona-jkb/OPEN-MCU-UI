@@ -18,11 +18,13 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "i2c.h"
+#include "tim.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "stm32_u8g2.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -86,16 +88,26 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_I2C1_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-
+u8g2_t u8g2;
+u8g2Init(&u8g2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0);
-    HAL_Delay(500);
+      u8g2_FirstPage(&u8g2);
+       do
+       {
+        u8g2_SetFontDirection(&u8g2,0);//确定字体方向
+        u8g2_SetFont(&u8g2,u8g2_font_fub11_tf);//设置字体
+        u8g2_SetDrawColor(&u8g2,2);//设置绘制颜色
+        u8g2_DrawStr(&u8g2, 0, 20, "STM32F103C8T6");
+            
+       } while (u8g2_NextPage(&u8g2));
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
