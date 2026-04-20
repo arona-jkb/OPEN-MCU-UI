@@ -25,6 +25,11 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stm32_u8g2.h"
+#include "u8g2.h"
+#include "ux_move.h"
+#include "Key.h"
+#include <stdint.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,7 +56,10 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+void Int_To_String(int value, char* buffer, int buffer_size)
+{
+    snprintf(buffer, buffer_size, "%d", value);
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -93,20 +101,55 @@ int main(void)
   /* USER CODE BEGIN 2 */
 u8g2_t u8g2;
 u8g2Init(&u8g2);
+
+anim_ctrl_t anim1 = {.start_x = 0,.start_y = 0};
+anim_start(&anim1, anim1.start_x, anim1.start_y, 0, 60, 3000,NULL);
+anim_ctrl_t anim2 = {.start_x = 0,.start_y = 0};        
+void anim2_finish(void *element)
+{
+  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0);
+}
+anim_start(&anim2, anim2.start_x, anim2.start_y, 0, 50, 3000,anim2_finish);
+uint8_t key_flag = 0;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+      anim_manager_update();
+      int8_t key = Key();
+      
+      if(key==1)
+      {
+        key_flag ++;
+        key_flag=key_flag%3;
+        anim_back(&anim2);
+      }
+      switch (key_flag) {
+      case 1:
+        
+        break;
+      case 2:
+       
+        
+        break;
+      default:
+        break;
+      }
+      char key_str[10];
+      Int_To_String(key_flag, key_str, sizeof(key_str));
+
       u8g2_FirstPage(&u8g2);
        do
        {
         u8g2_SetFontDirection(&u8g2,0);//确定字体方向
         u8g2_SetFont(&u8g2,u8g2_font_fub11_tf);//设置字体
         u8g2_SetDrawColor(&u8g2,2);//设置绘制颜色
-        u8g2_DrawStr(&u8g2, 0, 20, "STM32F103C8T6");
-            
+        u8g2_DrawStr(&u8g2, anim1.cur_x, anim1.cur_y, "STM32");
+        u8g2_DrawBox(&u8g2, anim2.cur_x, anim2.cur_y, 5, 5);
+        u8g2_DrawStr(&u8g2, 100, 20, key_str); 
        } while (u8g2_NextPage(&u8g2));
     /* USER CODE END WHILE */
 
