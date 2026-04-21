@@ -10,22 +10,36 @@ typedef struct {
 
 static anim_manager_t g_anim_mgr = {0};    // 全局单例管理器
 
-//*------------------------------------------内部缓动函数-------------------------------------------*/
+//*------------------------------------------核心缓动函数-------------------------------------------*/
 
-/* 线性插值：t 当前时间，b 起始值，c 变化量，d 总时长，通过out输出当前值 */
-static inline void linear_ease(int32_t t, int32_t b, int32_t c, int32_t d, int32_t *out) 
+/* 线性插值：t动画已经流逝的时间，b 动画坐标起始值，c 动画坐标总变化量，d 动画运行总时长，通过out输出当前值 */
+ inline void linear_ease(int32_t t, int32_t b, int32_t c, int32_t d, int32_t *out) 
 {
     *out = b + (c * t) / d;
 }
-
 /* 二次 ease-out 示例（可选） */
-static void quad_ease_out(int32_t t, int32_t b, int32_t c, int32_t d, int32_t *out) 
+ void quad_ease_out(int32_t t, int32_t b, int32_t c, int32_t d, int32_t *out) 
 {
-    t = (t * 10) / d;           // 归一化放大10倍防精度丢失
-    int32_t v = (c * t * t) / 100;
-    *out = b + c - v;
+ // 使用公式：f(t) = b + c × (2×t/d - t²/d²)
+    
+    if (d == 0) {
+        *out = b + c;  // 防止除以零
+        return;
+    }
+    
+    // 使用16位精度（减少计算量，视觉差异不大）
+    // 将时间归一化到[0, 256]范围，便于整数运算
+    uint32_t normalized_t = (t << 8) / d;  // t/d 放大256倍（使用移位优化）
+    
+    // 计算 t²/d²，注意已经放大256倍，平方后是65536倍
+    uint32_t t_squared = (normalized_t * normalized_t) >> 8;  // 除以256得到256倍
+    
+    // 计算 2×t/d - t²/d²，结果在[0, 256]范围内
+    uint32_t progress = (2 * normalized_t) - t_squared;
+    
+    // 计算最终结果：b + c × progress / 256
+    *out = b + ((int32_t)c * (int32_t)progress) / 256;
 }
-
 /*------------------------------------------内部动画管理器注册函数与移除函数-------------------------------------------*/
 
 /* 添加一个动画实例到管理器（通常启动动画时自动注册） */
@@ -70,7 +84,7 @@ void anim_unregister(anim_ctrl_t *anim)
 void anim_start(anim_ctrl_t *anim, 
                 int16_t sx, int16_t sy, 
                 int16_t ex, int16_t ey, 
-                uint32_t duration_ms,void *on_finish) 
+                uint32_t duration_ms,void *easing) 
 {
     anim->state = ANIM_PLAYING;
     anim->start_time = HAL_GetTick();
@@ -81,8 +95,7 @@ void anim_start(anim_ctrl_t *anim,
     anim->end_y   = ey;
     anim->cur_x   = sx;
     anim->cur_y   = sy;
-    anim->easing  = linear_ease;   // 默认线性
-    anim->on_finish = on_finish;
+    anim->easing  = easing;
     
     anim_register(anim);           // 自动加入管理器
 }
@@ -176,7 +189,7 @@ void anim_back(anim_ctrl_t *anim)
         elapsed = anim->duration;
     }
     anim_stop(anim);
-    anim_start(anim, anim->cur_x, anim->cur_y, anim->start_x, anim->start_y, elapsed, NULL);
+    anim_start(anim, anim->cur_x, anim->cur_y, anim->start_x, anim->start_y, elapsed, anim->easing);
     anim->state = ANIM_BACKING;
 }
 

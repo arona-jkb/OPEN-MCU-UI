@@ -32,10 +32,14 @@ typedef struct {
 
 void anim_manager_update(void);
 
+void quad_ease_out(int32_t t, int32_t b, int32_t c, int32_t d, int32_t *out);
+void linear_ease(int32_t t, int32_t b, int32_t c, int32_t d, int32_t *out);
+
+
 void anim_start(anim_ctrl_t *anim, 
                 int16_t sx, int16_t sy, 
                 int16_t ex, int16_t ey, 
-                uint32_t duration_ms,void *on_finish);
+                uint32_t duration_ms,void *easing);
 void anim_pause(anim_ctrl_t *anim);
 void anim_resume(anim_ctrl_t *anim);
 void anim_stop(anim_ctrl_t *anim);

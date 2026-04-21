@@ -30,6 +30,7 @@
 #include "Key.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/types.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -102,14 +103,14 @@ int main(void)
 u8g2_t u8g2;
 u8g2Init(&u8g2);
 
-anim_ctrl_t anim1 = {.start_x = 0,.start_y = 0};
-anim_start(&anim1, anim1.start_x, anim1.start_y, 0, 60, 3000,NULL);
+anim_ctrl_t anim1 = {.start_x = 0,.start_y = 20};
+anim_start(&anim1, anim1.start_x, anim1.start_y, 30, 60, 1000,quad_ease_out);
 anim_ctrl_t anim2 = {.start_x = 0,.start_y = 0};        
 void anim2_finish(void *element)
 {
   HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0);
 }
-anim_start(&anim2, anim2.start_x, anim2.start_y, 0, 50, 3000,anim2_finish);
+anim_start(&anim2, anim2.start_x, anim2.start_y, 0, 60, 1000,linear_ease);
 uint8_t key_flag = 0;
 
   /* USER CODE END 2 */
@@ -125,7 +126,7 @@ uint8_t key_flag = 0;
       {
         key_flag ++;
         key_flag=key_flag%3;
-        anim_back(&anim2);
+        anim_back(&anim1);
       }
       switch (key_flag) {
       case 1:
