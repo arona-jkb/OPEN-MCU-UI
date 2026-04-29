@@ -68,6 +68,27 @@ void anim_unregister(anim_ctrl_t *anim)
 }
 
 /*------------------------------------------外部公共函数-------------------------------------------*/
+// 在 ux_move.c 中实现
+void anim_init(anim_ctrl_t *anim) {
+    if (!anim) return;
+    anim->state = ANIM_IDLE;
+    anim->start_time = 0;
+    anim->duration = 0;
+    anim->start_x = anim->start_y = 0;
+    anim->end_x = anim->end_y = 0;
+    anim->cur_x = anim->cur_y = 0;
+    anim->easing = quad_ease_out;    // 默认线性
+    anim->elapsed_time = 0;
+    anim->on_finish = NULL;
+}
+void anim_set_position(anim_ctrl_t *anim, int16_t x, int16_t y) {
+    if (!anim) return;
+    anim->cur_x = x;
+    anim->cur_y = y;
+    anim->start_x = anim->end_x = x;
+    anim->start_y = anim->end_y = y;
+    anim->state = ANIM_IDLE;
+}
 /**
  * @brief 启动动画
  * 
@@ -86,6 +107,7 @@ void anim_start(anim_ctrl_t *anim,
                 int16_t ex, int16_t ey, 
                 uint32_t duration_ms,void *easing) 
 {
+    if (!anim) return;
     anim->state = ANIM_PLAYING;
     anim->start_time = HAL_GetTick();
     anim->duration = duration_ms;

@@ -35,6 +35,13 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+typedef struct {
+    anim_ctrl_t *anim;
+    int16_t sx, sy, ex, ey;
+    uint32_t duration_ms;
+    void (*easing)(int32_t t, int32_t b, int32_t c, int32_t d, int32_t *out);
+}
+anim_start_FUNC_PARAM_sequence_t;
 
 /* USER CODE END PTD */
 
@@ -61,6 +68,17 @@ void Int_To_String(int value, char* buffer, int buffer_size)
 {
     snprintf(buffer, buffer_size, "%d", value);
 }
+void anim_START_choose(anim_start_FUNC_PARAM_sequence_t param[], uint8_t size, uint8_t index)
+{
+    if (index >= size) return;
+    anim_start(param[index].anim, param[index].sx, param[index].sy, param[index].ex, param[index].ey,
+       param[index].duration_ms, param[index].easing);
+}
+void anim_back_choose(anim_start_FUNC_PARAM_sequence_t param[], uint8_t size, uint8_t index)
+{
+    if (index >= size) return;
+    anim_back(param[index].anim);
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -82,10 +100,9 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+    HAL_Init();
 
   /* USER CODE BEGIN Init */
-
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -103,16 +120,26 @@ int main(void)
 u8g2_t u8g2;
 u8g2Init(&u8g2);
 
-anim_ctrl_t anim1 = {.start_x = 0,.start_y = 20};
-anim_start(&anim1, anim1.start_x, anim1.start_y, 30, 60, 1000,quad_ease_out);
-anim_ctrl_t anim2 = {.start_x = 0,.start_y = 0};        
-void anim2_finish(void *element)
-{
-  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0);
-}
-anim_start(&anim2, anim2.start_x, anim2.start_y, 0, 60, 1000,linear_ease);
-uint8_t key_flag = 0;
+anim_ctrl_t anim1;
+anim_ctrl_t anim2;        
+anim_ctrl_t anim3;
+anim_init(&anim1);
+anim_init(&anim2);
+anim_init(&anim3);
+anim_start_FUNC_PARAM_sequence_t anim_funcs[] = {
+    {&anim1, 40, 16, 20, 16, 500, quad_ease_out},
+    {&anim2, 40, 32, 20, 32, 500, quad_ease_out},
+    {&anim3, 40, 48, 20, 48, 500, quad_ease_out}
+};
 
+// anim_start(&anim1, 100, 16, 40, 16, 500, quad_ease_out);
+// anim_start(&anim2, 100, 32, 40, 32, 500, quad_ease_out);
+// anim_start(&anim3, 100, 48, 40, 48, 500, quad_ease_out);
+anim_set_position(&anim1,40,16);
+anim_set_position(&anim2,40,32);
+anim_set_position(&anim3,40,48);
+uint8_t key_flag = 0;
+anim_START_choose(anim_funcs, 3, key_flag);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -124,20 +151,11 @@ uint8_t key_flag = 0;
       
       if(key==1)
       {
+        uint8_t last_key = key_flag;
         key_flag ++;
         key_flag=key_flag%3;
-        anim_back(&anim1);
-      }
-      switch (key_flag) {
-      case 1:
-        
-        break;
-      case 2:
-       
-        
-        break;
-      default:
-        break;
+        anim_START_choose(anim_funcs, 3, key_flag);
+        anim_back_choose(anim_funcs, 3, last_key);
       }
       char key_str[10];
       Int_To_String(key_flag, key_str, sizeof(key_str));
@@ -149,8 +167,10 @@ uint8_t key_flag = 0;
         u8g2_SetFont(&u8g2,u8g2_font_fub11_tf);//设置字体
         u8g2_SetDrawColor(&u8g2,2);//设置绘制颜色
         u8g2_DrawStr(&u8g2, anim1.cur_x, anim1.cur_y, "STM32");
-        u8g2_DrawBox(&u8g2, anim2.cur_x, anim2.cur_y, 5, 5);
-        u8g2_DrawStr(&u8g2, 100, 20, key_str); 
+        u8g2_DrawStr(&u8g2, anim2.cur_x, anim2.cur_y, "test");
+        u8g2_DrawStr(&u8g2, anim3.cur_x, anim3.cur_y, "key");
+
+        u8g2_DrawStr(&u8g2, 110, 16, key_str); 
        } while (u8g2_NextPage(&u8g2));
     /* USER CODE END WHILE */
 
