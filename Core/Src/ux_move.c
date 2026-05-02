@@ -68,7 +68,20 @@ void anim_unregister(anim_ctrl_t *anim)
 }
 
 /*------------------------------------------外部公共函数-------------------------------------------*/
-// 在 ux_move.c 中实现
+/**
+ * @brief 初始化动画控制块
+ * 
+ * 将动画控制块的所有字段重置为默认值，确保动画处于可用的初始状态。
+ * 此函数应在创建动画实例后立即调用，或在重复使用动画实例前调用。
+ * 
+ * @param anim 指向要初始化的动画控制块的指针
+ * 
+ * @note 此函数会进行参数有效性检查，确保动画指针有效
+ * @note 初始化后动画状态为ANIM_IDLE，所有时间、坐标参数清零
+ * @note 默认使用quad_ease_out缓动函数，提供自然的减速效果
+ * @note 动画结束回调函数设置为NULL，需要时再手动设置
+ */
+
 void anim_init(anim_ctrl_t *anim) {
     if (!anim) return;
     anim->state = ANIM_IDLE;
@@ -77,10 +90,23 @@ void anim_init(anim_ctrl_t *anim) {
     anim->start_x = anim->start_y = 0;
     anim->end_x = anim->end_y = 0;
     anim->cur_x = anim->cur_y = 0;
-    anim->easing = quad_ease_out;    // 默认线性
+    anim->easing = quad_ease_out;    // 默认二次 ease-out 缓动函数
     anim->elapsed_time = 0;
     anim->on_finish = NULL;
 }
+/**
+ * @brief 设置元素位置，在没有动画播放时直接设置坐标并重置状态
+ * 
+ * @param anim 指向要设置位置的动画控制块的指针
+ * @param x    目标X坐标（像素）
+ * @param y    目标Y坐标（像素）
+ * 
+ * @note 此函数会进行参数有效性检查，确保动画指针有效
+ * @note 设置后动画状态变为ANIM_IDLE，可以重新启动动画
+ * @note 同时更新当前坐标、起始坐标和结束坐标，确保动画参数一致性
+ * @note 适用于在没有动画播放时直接设置元素位置，或者重置动画状态后准备启动新动画
+ */
+
 void anim_set_position(anim_ctrl_t *anim, int16_t x, int16_t y) {
     if (!anim) return;
     anim->cur_x = x;
@@ -120,6 +146,14 @@ void anim_start(anim_ctrl_t *anim,
     anim->easing  = easing;
     
     anim_register(anim);           // 自动加入管理器
+}
+void anim_start_step(anim_ctrl_t *anim) {
+    if (!anim || !anim->steps || anim->step_count == 0) return;
+    anim_step_t *first = &anim->steps[0];
+    anim_start(anim, anim->cur_x, anim->cur_y, 
+               first->target_x, first->target_y, 
+               first->duration_ms, first->easing ? first->easing : anim->easing);
+    anim->current_step = 0;
 }
 /**
  * @brief 暂停动画播放
@@ -252,12 +286,45 @@ void anim_manager_update(void)
         {
             anim->cur_x = anim->end_x;
             anim->cur_y = anim->end_y;
-            anim->state = ANIM_FINISHED;
-            if (anim->on_finish) // 如果有结束回调函数，调用它
+            // 处理动画结束逻辑,根据是否有动画序列,是否循环播放,是否还有步骤可执行,判断是否需要进入下一步骤
+            if (anim->steps != NULL && anim->current_step + 1 < anim->step_count) 
             {
-                anim->on_finish(anim);
+                // 进入下一步骤
+                anim->current_step++;
+                anim_step_t *next = &anim->steps[anim->current_step];
+                
+                // 重置动画参数（从当前位置开始）
+                anim->start_x = anim->cur_x;
+                anim->start_y = anim->cur_y;
+                anim->end_x = next->target_x;
+                anim->end_y = next->target_y;
+                anim->duration = next->duration_ms;
+                anim->start_time = HAL_GetTick();
+                if (next->easing) anim->easing = next->easing;
+                // 状态保持 PLAYING，继续执行
+            } 
+            else 
+            {
+                // 队列结束或循环
+                if (anim->loop && anim->steps != NULL) 
+                {
+                    anim->current_step = 0;
+                    anim_step_t *first = &anim->steps[0];
+                    anim->start_x = anim->cur_x;
+                    anim->start_y = anim->cur_y;
+                    anim->end_x = first->target_x;
+                    anim->end_y = first->target_y;
+                    anim->duration = first->duration_ms;
+                    anim->start_time = HAL_GetTick();
+                    if (first->easing) anim->easing = first->easing;
+                } 
+                else 
+                {
+                    anim->state = ANIM_FINISHED;
+                    if (anim->on_finish) anim->on_finish(anim);
+                    anim_unregister(anim);
+                }
             }
-            anim_unregister(anim);  // 自动移除
         } 
         else // 动画进行中,更新动画坐标
         {

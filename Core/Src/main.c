@@ -120,26 +120,29 @@ int main(void)
 u8g2_t u8g2;
 u8g2Init(&u8g2);
 
-anim_ctrl_t anim1;
-anim_ctrl_t anim2;        
-anim_ctrl_t anim3;
-anim_init(&anim1);
-anim_init(&anim2);
-anim_init(&anim3);
-anim_start_FUNC_PARAM_sequence_t anim_funcs[] = {
-    {&anim1, 40, 16, 20, 16, 500, quad_ease_out},
-    {&anim2, 40, 32, 20, 32, 500, quad_ease_out},
-    {&anim3, 40, 48, 20, 48, 500, quad_ease_out}
+uint8_t ket_value=0;
+
+// 定义动画序列数组
+anim_step_t move_sequence[] = {
+    { .target_x = 40, .target_y = 20,   .duration_ms = 1000, .easing = quad_ease_out },
+    { .target_x = 40, .target_y = 60, .duration_ms = 1000, .easing = linear_ease },
+    { .target_x = 0,   .target_y = 60, .duration_ms = 1000, .easing = quad_ease_out },
+    { .target_x = 0,   .target_y = 20,   .duration_ms = 1000, .easing = NULL }, // 使用默认缓动
 };
 
-// anim_start(&anim1, 100, 16, 40, 16, 500, quad_ease_out);
-// anim_start(&anim2, 100, 32, 40, 32, 500, quad_ease_out);
-// anim_start(&anim3, 100, 48, 40, 48, 500, quad_ease_out);
-anim_set_position(&anim1,40,16);
-anim_set_position(&anim2,40,32);
-anim_set_position(&anim3,40,48);
-uint8_t key_flag = 0;
-anim_START_choose(anim_funcs, 3, key_flag);
+// 初始化动画
+anim_ctrl_t box;
+anim_init(&box);
+anim_set_position(&box, 0, 20);
+
+// 绑定序列并启动
+box.steps = move_sequence;
+box.step_count = sizeof(move_sequence) / sizeof(anim_step_t);
+box.current_step = 0;
+box.loop = true; // 循环播放
+
+// 启动第一步
+anim_start_step(&box);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -149,16 +152,16 @@ anim_START_choose(anim_funcs, 3, key_flag);
       anim_manager_update();
       int8_t key = Key();
       
-      if(key==1)
-      {
-        uint8_t last_key = key_flag;
-        key_flag ++;
-        key_flag=key_flag%3;
-        anim_START_choose(anim_funcs, 3, key_flag);
-        anim_back_choose(anim_funcs, 3, last_key);
-      }
-      char key_str[10];
-      Int_To_String(key_flag, key_str, sizeof(key_str));
+      // if(key==1)
+      // {
+      //   uint8_t last_key = key_flag;
+      //   key_flag ++;
+      //   key_flag=key_flag%3;
+      //   anim_START_choose(anim_funcs, 3, key_flag);
+      //   anim_back_choose(anim_funcs, 3, last_key);
+      // }
+      // char key_str[10];
+      // Int_To_String(key_flag, key_str, sizeof(key_str));
 
       u8g2_FirstPage(&u8g2);
        do
@@ -166,11 +169,10 @@ anim_START_choose(anim_funcs, 3, key_flag);
         u8g2_SetFontDirection(&u8g2,0);//确定字体方向
         u8g2_SetFont(&u8g2,u8g2_font_fub11_tf);//设置字体
         u8g2_SetDrawColor(&u8g2,2);//设置绘制颜色
-        u8g2_DrawStr(&u8g2, anim1.cur_x, anim1.cur_y, "STM32");
-        u8g2_DrawStr(&u8g2, anim2.cur_x, anim2.cur_y, "test");
-        u8g2_DrawStr(&u8g2, anim3.cur_x, anim3.cur_y, "key");
 
-        u8g2_DrawStr(&u8g2, 110, 16, key_str); 
+        u8g2_DrawStr(&u8g2, box.cur_x, box.cur_y, "STM32");
+        // u8g2_DrawStr(&u8g2, 110, 16, key_str);
+
        } while (u8g2_NextPage(&u8g2));
     /* USER CODE END WHILE */
 

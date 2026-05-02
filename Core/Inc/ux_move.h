@@ -1,6 +1,8 @@
 #ifndef __UX_MOVE_H__
 #define __UX_MOVE_H__
 
+#include <stdint.h>
+#include <stdbool.h>
 #ifndef MAX_ANIM_NUM
 #define MAX_ANIM_NUM  10   // 根据单片机 RAM 设置，一般 8~16 够用
 #endif
@@ -15,6 +17,13 @@ typedef enum {
     ANIM_FINISHED,
     ANIM_BACKING,
 } anim_state_t;
+// 动画步骤结构体(用于组成动画序列数组)
+typedef struct {
+    int16_t target_x;
+    int16_t target_y;
+    uint32_t duration_ms;
+    void (*easing)(int32_t t, int32_t b, int32_t c, int32_t d, int32_t *out);
+} anim_step_t;
 
 /* 动画控制块 */
 typedef struct {
@@ -28,6 +37,11 @@ typedef struct {
     int32_t elapsed_time;
     // 动画结束回调
     void (*on_finish)(void *element);
+    //动画序列支持
+    const anim_step_t *steps; // 指向动画序列数组的指针
+    uint8_t step_count;          // 动画序列中的步骤数量
+    uint8_t current_step;        // 当前动画步骤索引
+    bool loop;                   // 是否循环播放动画序列
 } anim_ctrl_t;
 
 void anim_manager_update(void);
@@ -37,6 +51,7 @@ void linear_ease(int32_t t, int32_t b, int32_t c, int32_t d, int32_t *out);
 
 void anim_init(anim_ctrl_t *anim);
 void anim_set_position(anim_ctrl_t *anim, int16_t x, int16_t y);
+void anim_start_step(anim_ctrl_t *anim);
 void anim_start(anim_ctrl_t *anim, int16_t sx, int16_t sy, int16_t ex, int16_t ey, uint32_t duration_ms,void *easing);
 void anim_pause(anim_ctrl_t *anim);
 void anim_resume(anim_ctrl_t *anim);
