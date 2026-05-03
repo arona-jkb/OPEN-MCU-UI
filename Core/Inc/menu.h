@@ -27,6 +27,9 @@ typedef struct {
     uint8_t selected;
     anim_ctrl_t scroll_anim;
     int16_t scroll_target;
+    anim_ctrl_t bar_anim;       /* animates box top (cur_y) and width (cur_x) */
+    int16_t  bar_target_y;      /* cached target to avoid re-triggering */
+    int16_t  bar_target_w;
 } menu_state_t;
 
 void menu_init(menu_state_t *state, const menu_page_t *root);
