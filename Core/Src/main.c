@@ -100,7 +100,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-    HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
   /* USER CODE END Init */
@@ -121,9 +121,12 @@ u8g2_t u8g2;
 u8g2Init(&u8g2);
 
 uint8_t ket_value=0;
+int16_t test_x=0;
+int16_t test_y=0;
+
 
 // 定义动画序列数组
-anim_step_t move_sequence[] = {
+const anim_step_t move_sequence[] = {
     { .target_x = 40, .target_y = 20,   .duration_ms = 1000, .easing = quad_ease_out },
     { .target_x = 40, .target_y = 60, .duration_ms = 1000, .easing = linear_ease },
     { .target_x = 0,   .target_y = 60, .duration_ms = 1000, .easing = quad_ease_out },
@@ -139,7 +142,7 @@ anim_set_position(&box, 0, 20);
 box.steps = move_sequence;
 box.step_count = sizeof(move_sequence) / sizeof(anim_step_t);
 box.current_step = 0;
-box.loop = true; // 循环播放
+box.loop = false; // 循环播放
 
 // 启动第一步
 anim_start_step(&box);
@@ -150,8 +153,18 @@ anim_start_step(&box);
   while (1)
   {
       anim_manager_update();
-      int8_t key = Key();
-      
+      // int8_t key = Key();
+
+    if(anim_manager_is_idle())
+    {
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);						//将PC13引脚设置为高电平
+    }
+    
+    anim_get_position(&box, &test_x, &test_y);
+    char ptr[10];
+    char ptr2[10];
+    Int_To_String(test_x, ptr, sizeof(ptr));
+    Int_To_String(test_y, ptr2, sizeof(ptr2));
       // if(key==1)
       // {
       //   uint8_t last_key = key_flag;
@@ -169,9 +182,9 @@ anim_start_step(&box);
         u8g2_SetFontDirection(&u8g2,0);//确定字体方向
         u8g2_SetFont(&u8g2,u8g2_font_fub11_tf);//设置字体
         u8g2_SetDrawColor(&u8g2,2);//设置绘制颜色
-
         u8g2_DrawStr(&u8g2, box.cur_x, box.cur_y, "STM32");
-        // u8g2_DrawStr(&u8g2, 110, 16, key_str);
+        u8g2_DrawStr(&u8g2, 110, 16, ptr);
+        u8g2_DrawStr(&u8g2, 110, 32, ptr2);
 
        } while (u8g2_NextPage(&u8g2));
     /* USER CODE END WHILE */

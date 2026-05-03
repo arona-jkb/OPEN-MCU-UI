@@ -35,8 +35,7 @@ typedef struct {
     int16_t cur_x, cur_y;     // 当前帧坐标
     void (*easing)(int32_t t, int32_t b, int32_t c, int32_t d, int32_t *out);
     int32_t elapsed_time;
-    // 动画结束回调
-    void (*on_finish)(void *element);
+    void (*on_finish)(void *element);// 动画结束回调
     //动画序列支持
     const anim_step_t *steps; // 指向动画序列数组的指针
     uint8_t step_count;          // 动画序列中的步骤数量
@@ -58,7 +57,15 @@ void anim_resume(anim_ctrl_t *anim);
 void anim_stop(anim_ctrl_t *anim);
 void anim_back(anim_ctrl_t *anim);
 
-
+bool anim_manager_is_idle(void);
+static inline void anim_get_position(anim_ctrl_t *anim, int16_t *x, int16_t *y) // 获取当前动画坐标
+{
+    if (anim) { *x = anim->cur_x; *y = anim->cur_y; }
+}
+static inline bool anim_is_playing(anim_ctrl_t *anim) // 判断动画是否正在播放
+{
+    return anim && (anim->state == ANIM_PLAYING);
+}
 
 
 

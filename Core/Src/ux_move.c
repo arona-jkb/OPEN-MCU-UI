@@ -147,9 +147,23 @@ void anim_start(anim_ctrl_t *anim,
     
     anim_register(anim);           // 自动加入管理器
 }
+/**
+ * @brief 启动动画序列的第一步
+ * 
+ * 启动动画序列中的第一个步骤，从当前位置移动到第一个目标位置。
+ * 此函数用于开始播放预先定义好的动画序列，支持多步骤的复杂动画效果。
+ * 
+ * @param anim 指向包含动画序列的动画控制块的指针
+ * 
+ * @note 此函数会进行参数有效性检查，确保动画指针、步骤数组和步骤数量有效
+ * @note 使用动画序列中第一个步骤的参数启动动画
+ * @note 如果步骤指定了缓动函数则使用步骤的缓动函数，否则使用动画默认缓动函数
+ * @note 设置当前步骤索引为0，为后续步骤播放做准备
+ */
+
 void anim_start_step(anim_ctrl_t *anim) {
     if (!anim || !anim->steps || anim->step_count == 0) return;
-    anim_step_t *first = &anim->steps[0];
+    const anim_step_t *first = &anim->steps[0];
     anim_start(anim, anim->cur_x, anim->cur_y, 
                first->target_x, first->target_y, 
                first->duration_ms, first->easing ? first->easing : anim->easing);
@@ -248,7 +262,23 @@ void anim_back(anim_ctrl_t *anim)
     anim_start(anim, anim->cur_x, anim->cur_y, anim->start_x, anim->start_y, elapsed, anim->easing);
     anim->state = ANIM_BACKING;
 }
-
+/**
+ * @brief 检查动画管理器是否处于空闲状态
+ * 
+ * 通过检查全局动画管理器中的动画实例数量来判断系统是否处于空闲状态。
+ * 当没有动画正在播放、暂停或等待处理时，管理器被视为空闲状态。
+ * 
+ * @return true  动画管理器空闲（没有注册的动画实例）
+ * @return false 动画管理器忙碌（有动画实例正在处理）
+ * 
+ * @note 此函数用于系统状态检测，可配合节能模式或任务调度使用
+ * @note 空闲状态表示当前没有需要更新的动画，系统可以进入低功耗模式
+ * @note 适用于需要等待所有动画完成后再执行后续操作的场景
+ */
+bool anim_manager_is_idle(void) 
+{
+    return g_anim_mgr.count == 0;
+}
 /**
  * @brief 动画管理器更新函数
  * 
@@ -291,7 +321,7 @@ void anim_manager_update(void)
             {
                 // 进入下一步骤
                 anim->current_step++;
-                anim_step_t *next = &anim->steps[anim->current_step];
+                const anim_step_t *next = &anim->steps[anim->current_step];
                 
                 // 重置动画参数（从当前位置开始）
                 anim->start_x = anim->cur_x;
@@ -309,7 +339,7 @@ void anim_manager_update(void)
                 if (anim->loop && anim->steps != NULL) 
                 {
                     anim->current_step = 0;
-                    anim_step_t *first = &anim->steps[0];
+                    const anim_step_t *first = &anim->steps[0];
                     anim->start_x = anim->cur_x;
                     anim->start_y = anim->cur_y;
                     anim->end_x = first->target_x;

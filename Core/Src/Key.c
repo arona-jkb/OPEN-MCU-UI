@@ -26,7 +26,10 @@ unsigned char Key_GetState()
 {
 	unsigned char KeyNumber=0;
 	
-	if(HAL_GPIO_ReadPin(user_key_GPIO_Port, user_key_Pin)==GPIO_PIN_RESET){KeyNumber=1;}
+	if(HAL_GPIO_ReadPin(user_key_GPIO_Port, user_key_Pin)==GPIO_PIN_RESET){KeyNumber=4;}
+	if(HAL_GPIO_ReadPin(key1_GPIO_Port, key1_Pin)==GPIO_PIN_RESET){KeyNumber=1;}
+	if(HAL_GPIO_ReadPin(key2_GPIO_Port, key2_Pin)==GPIO_PIN_RESET){KeyNumber=2;}
+	if(HAL_GPIO_ReadPin(key3_GPIO_Port, key3_Pin)==GPIO_PIN_RESET){KeyNumber=3;}
 	return KeyNumber;
 }
 
@@ -44,5 +47,17 @@ void Key_Tick(void)
 	if(LastState==1 && NowState==0)
 	{
 		Key_KeyNumber=1;
+	}
+	if(LastState==2 && NowState==0)
+	{
+		Key_KeyNumber=2;
+	}
+	if(LastState==3 && NowState==0)
+	{
+		Key_KeyNumber=3;
+	}
+	if(LastState==4 && NowState==0)
+	{
+		Key_KeyNumber=4;
 	}
 }

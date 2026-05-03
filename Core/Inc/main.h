@@ -59,6 +59,12 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define user_key_Pin GPIO_PIN_13
 #define user_key_GPIO_Port GPIOC
+#define key1_Pin GPIO_PIN_0
+#define key1_GPIO_Port GPIOA
+#define key2_Pin GPIO_PIN_1
+#define key2_GPIO_Port GPIOA
+#define key3_Pin GPIO_PIN_2
+#define key3_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
 
