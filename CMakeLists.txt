@@ -55,6 +55,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/stm32_u8g2.c
     Core/Src/ux_move.c
     Core/Src/Key.c
+    Core/Src/menu.c
 )
 
 # Add include paths
