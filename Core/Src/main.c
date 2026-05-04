@@ -27,12 +27,14 @@
 #include "stm32_u8g2.h"
 #include "u8g2.h"
 #include "menu.h"
+#include "popup.h"
 #include "Key.h"
 #include <stdint.h>
 #include <stdio.h>
 
 static void test_action(void);
 static void show_info_action(void);
+static void brightness_action(void);
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,9 +57,9 @@ static void show_info_action(void);
 /* USER CODE BEGIN PV */
 /* --- submenu pages --- */
 static const menu_item_t settings_items[] = {
-    {"Brightness", NULL, NULL},
-    {"Contrast",   NULL, NULL},
-    {"Reset",      NULL, NULL},
+    {"Brightness", brightness_action, NULL},
+    {"Contrast",   NULL,              NULL},
+    {"Reset",      NULL,              NULL},
 };
 
 static menu_page_t settings_page = {
@@ -110,6 +112,10 @@ static menu_page_t root_page = {
 
 /* --- global menu state --- */
 static menu_state_t menu_state;
+
+/* --- popup demo variables --- */
+static int16_t demo_brightness = 50;
+static popup_t  demo_popup;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -166,6 +172,7 @@ int main(void)
   about_page.parent    = &root_page;
 
   menu_init(&menu_state, &root_page);
+  popup_init(&demo_popup);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -175,14 +182,19 @@ int main(void)
       anim_manager_update();
 
       int8_t key = Key();
-      if (key == 1)      menu_key_up(&menu_state);
-      else if (key == 2) menu_key_down(&menu_state);
-      else if (key == 3) menu_key_enter(&menu_state);
-      else if (key == 4) menu_key_back(&menu_state);
+      if (popup_is_active(&demo_popup)) {
+          popup_update(&demo_popup, key);
+      } else {
+          if (key == 1)      menu_key_up(&menu_state);
+          else if (key == 2) menu_key_down(&menu_state);
+          else if (key == 3) menu_key_enter(&menu_state);
+          else if (key == 4) menu_key_back(&menu_state);
+      }
 
       u8g2_FirstPage(&u8g2);
       do {
           menu_render(&u8g2, &menu_state);
+          popup_render(&demo_popup, &u8g2);
       } while (u8g2_NextPage(&u8g2));
     /* USER CODE END WHILE */
 
@@ -232,13 +244,15 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 static void test_action(void) {
-    /* placeholder — wired to root item "Test Animation" */
     __NOP();
 }
 
 static void show_info_action(void) {
-    /* placeholder — wired to root item "Show Info" */
     __NOP();
+}
+
+static void brightness_action(void) {
+    popup_open(&demo_popup, "Brightness", &demo_brightness, 0, 100, 5);
 }
 /* USER CODE END 4 */
 

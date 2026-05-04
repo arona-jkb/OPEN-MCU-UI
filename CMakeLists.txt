@@ -56,6 +56,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/ux_move.c
     Core/Src/Key.c
     Core/Src/menu.c
+    Core/Src/popup.c
 )
 
 # Add include paths
