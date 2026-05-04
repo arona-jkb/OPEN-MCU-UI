@@ -36,6 +36,7 @@ static void test_action(void);
 static void show_info_action(void);
 static void brightness_action(void);
 static void power_action(void);
+static void reset_action(void);
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,7 +61,7 @@ static void power_action(void);
 static const menu_item_t settings_items[] = {
     {"Brightness", brightness_action, NULL},
     {"Power Save", power_action,      NULL},
-    {"Reset",      NULL,              NULL},
+    {"Reset",      reset_action,      NULL},
 };
 
 static menu_page_t settings_page = {
@@ -119,6 +120,7 @@ static int16_t     demo_brightness = 50;
 static popup_num_t demo_num_popup;
 static bool        demo_power = true;
 static popup_bool_t demo_bool_popup;
+static popup_toast_t toast;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -177,6 +179,7 @@ int main(void)
   menu_init(&menu_state, &root_page);
   popup_num_init(&demo_num_popup);
   popup_bool_init(&demo_bool_popup);
+  popup_toast_init(&toast);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -190,9 +193,12 @@ int main(void)
       /* popups consume keys only when active (idle = no-op) */
       popup_num_update(&demo_num_popup, key);
       popup_bool_update(&demo_bool_popup, key);
+      popup_toast_update(&toast);   /* auto-closes, no key input */
 
       /* menu keys — blocked while any popup is open */
-      if (!popup_num_active(&demo_num_popup) && !popup_bool_active(&demo_bool_popup)) {
+      if (!popup_num_active(&demo_num_popup) &&
+          !popup_bool_active(&demo_bool_popup) &&
+          !popup_toast_active(&toast)) {
           if (key == 1)      menu_key_up(&menu_state);
           else if (key == 2) menu_key_down(&menu_state);
           else if (key == 3) menu_key_enter(&menu_state);
@@ -204,6 +210,7 @@ int main(void)
           menu_render(&u8g2, &menu_state);
           popup_num_render(&demo_num_popup, &u8g2);
           popup_bool_render(&demo_bool_popup, &u8g2);
+          popup_toast_render(&toast, &u8g2);
       } while (u8g2_NextPage(&u8g2));
     /* USER CODE END WHILE */
 
@@ -266,6 +273,10 @@ static void brightness_action(void) {
 
 static void power_action(void) {
     popup_bool_open(&demo_bool_popup, "Power Save", &demo_power, "ON", "OFF");
+}
+
+static void reset_action(void) {
+    popup_toast_show(&toast, "Settings cleared");
 }
 /* USER CODE END 4 */
 

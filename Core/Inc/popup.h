@@ -57,4 +57,18 @@ bool popup_bool_active(const popup_bool_t *p);
 void popup_bool_update(popup_bool_t *p, int8_t key);
 void popup_bool_render(const popup_bool_t *p, u8g2_t *u8g2);
 
+/* ========== toast notification popup ========== */
+typedef struct {
+    popup_state_e state;
+    const char   *text;
+    uint32_t      open_time;
+    anim_ctrl_t   slide;
+} popup_toast_t;
+
+void popup_toast_init(popup_toast_t *p);
+void popup_toast_show(popup_toast_t *p, const char *text);
+bool popup_toast_active(const popup_toast_t *p);
+void popup_toast_update(popup_toast_t *p);
+void popup_toast_render(const popup_toast_t *p, u8g2_t *u8g2);
+
 #endif

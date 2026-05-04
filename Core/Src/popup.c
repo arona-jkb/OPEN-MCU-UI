@@ -150,3 +150,76 @@ void popup_bool_render(const popup_bool_t *p, u8g2_t *u8g2) {
 
     u8g2_SetDrawColor(u8g2, 1);
 }
+
+
+/* ========== toast popup ========== */
+
+#define TOAST_PAD_X   6
+#define TOAST_PAD_Y   3
+#define TOAST_R       3
+#define TOAST_MS      1000
+#define TOAST_ANIM_MS 180
+#define TOAST_H       18
+#define TOAST_Y       ((64 - TOAST_H) / 2)   /* = 23 */
+#define TOAST_OFF     (-TOAST_H)
+
+void popup_toast_init(popup_toast_t *p) {
+    p->state = POPUP_IDLE;
+    anim_init(&p->slide);
+}
+
+void popup_toast_show(popup_toast_t *p, const char *text) {
+    p->text      = text;
+    p->open_time = HAL_GetTick();
+    p->state     = POPUP_OPENING;
+    anim_start(&p->slide, 0, TOAST_OFF, 0, TOAST_Y, TOAST_ANIM_MS, quad_ease_out);
+}
+
+bool popup_toast_active(const popup_toast_t *p) {
+    return p->state != POPUP_IDLE;
+}
+
+void popup_toast_update(popup_toast_t *p) {
+    switch (p->state) {
+    case POPUP_OPENING:
+        if (p->slide.state == ANIM_FINISHED || p->slide.state == ANIM_IDLE)
+            p->state = POPUP_ACTIVE;
+        break;
+    case POPUP_ACTIVE:
+        if (HAL_GetTick() - p->open_time >= TOAST_MS) {
+            anim_start(&p->slide, 0, p->slide.cur_y, 0, TOAST_OFF, TOAST_ANIM_MS, quad_ease_out);
+            p->state = POPUP_CLOSING;
+        }
+        break;
+    case POPUP_CLOSING:
+        if (p->slide.state == ANIM_FINISHED || p->slide.state == ANIM_IDLE)
+            p->state = POPUP_IDLE;
+        break;
+    default: break;
+    }
+}
+
+void popup_toast_render(const popup_toast_t *p, u8g2_t *u8g2) {
+    if (p->state == POPUP_IDLE) return;
+
+    u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
+    int16_t     ascent = u8g2_GetAscent(u8g2);
+    u8g2_uint_t str_w  = u8g2_GetStrWidth(u8g2, p->text);
+
+    int16_t bw = (int16_t)str_w + TOAST_PAD_X * 2;
+    int16_t bh = ascent + 3 + TOAST_PAD_Y * 2;
+    int16_t bx = (128 - bw) / 2;
+    int16_t by = p->slide.cur_y;
+
+    /* body + border */
+    u8g2_SetDrawColor(u8g2, 1);
+    u8g2_DrawRBox(u8g2, bx, by, bw, bh, TOAST_R);
+    u8g2_SetDrawColor(u8g2, 0);
+    u8g2_DrawRFrame(u8g2, bx, by, bw, bh, TOAST_R);
+
+    /* centred text */
+    int16_t text_y = by + (bh + ascent) / 2;
+    u8g2_DrawStr(u8g2, bx + TOAST_PAD_X, text_y, p->text);
+
+    u8g2_SetDrawColor(u8g2, 1);
+}
