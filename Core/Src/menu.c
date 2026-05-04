@@ -58,8 +58,9 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
     const menu_page_t *page = state->current;
     uint8_t sel = state->selected;
 
-    /* font & metrics */
-    u8g2_SetFont(u8g2, u8g2_font_helvB10_tf);
+    /* font & metrics — transparent mode required for XOR */
+    u8g2_SetFontMode(u8g2, 1);
+    u8g2_SetFont(u8g2, u8g2_font_helvB10_tr);
     int16_t ascent  = u8g2_GetAscent(u8g2);
     int16_t box_h   = MENU_LINE_HEIGHT;
 
@@ -92,32 +93,19 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
     int16_t bar_y = state->bar_anim.cur_y;
     int16_t bar_w = state->bar_anim.cur_x;
 
-    /* ----- non-selected items (pass 1, behind box) ----- */
+    /* ----- all items normal text (pass 1) ----- */
     for (uint8_t i = 0; i < page->count; i++) {
-        if (i == sel) continue;
         int16_t y = VISIBLE_TOP + (int16_t)i * MENU_LINE_HEIGHT - scroll + ascent;
         if (y < VISIBLE_TOP || y > 65) continue;
         u8g2_SetDrawColor(u8g2, 1);
         u8g2_DrawStr(u8g2, 4 + BOX_PAD_X, y, page->items[i].name);
     }
 
-    /* ----- selected item box + text (pass 2) ----- */
+    /* ----- selected item: XOR box inverts text underneath (pass 2) ----- */
     {
-        int16_t bx         = 2;
-        bool    bar_moving = (state->bar_anim.state == ANIM_PLAYING);
-
-        /* box at animated position */
-        u8g2_SetDrawColor(u8g2, 1);
+        int16_t bx = 2;
+        u8g2_SetDrawColor(u8g2, 2);
         u8g2_DrawRBox(u8g2, bx, bar_y, bar_w, box_h, BOX_RADIUS);
-
-        /* text at natural position — invert only when bar has arrived */
-        if (bar_moving) {
-            u8g2_DrawStr(u8g2, bx + BOX_PAD_X, item_y, page->items[sel].name);
-        } else {
-            u8g2_SetDrawColor(u8g2, 0);
-            u8g2_DrawStr(u8g2, bx + BOX_PAD_X, item_y, page->items[sel].name);
-            u8g2_SetDrawColor(u8g2, 1);
-        }
     }
 
     /* ----- title bar (drawn last to mask scrolled text) ----- */
