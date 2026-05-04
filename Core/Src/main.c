@@ -35,6 +35,7 @@
 static void test_action(void);
 static void show_info_action(void);
 static void brightness_action(void);
+static void power_action(void);
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,7 +59,7 @@ static void brightness_action(void);
 /* --- submenu pages --- */
 static const menu_item_t settings_items[] = {
     {"Brightness", brightness_action, NULL},
-    {"Contrast",   NULL,              NULL},
+    {"Power Save", power_action,      NULL},
     {"Reset",      NULL,              NULL},
 };
 
@@ -114,8 +115,10 @@ static menu_page_t root_page = {
 static menu_state_t menu_state;
 
 /* --- popup demo variables --- */
-static int16_t demo_brightness = 50;
-static popup_t  demo_popup;
+static int16_t     demo_brightness = 50;
+static popup_num_t demo_num_popup;
+static bool        demo_power = true;
+static popup_bool_t demo_bool_popup;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -172,7 +175,8 @@ int main(void)
   about_page.parent    = &root_page;
 
   menu_init(&menu_state, &root_page);
-  popup_init(&demo_popup);
+  popup_num_init(&demo_num_popup);
+  popup_bool_init(&demo_bool_popup);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -182,9 +186,13 @@ int main(void)
       anim_manager_update();
 
       int8_t key = Key();
-      if (popup_is_active(&demo_popup)) {
-          popup_update(&demo_popup, key);
-      } else {
+
+      /* popups consume keys only when active (idle = no-op) */
+      popup_num_update(&demo_num_popup, key);
+      popup_bool_update(&demo_bool_popup, key);
+
+      /* menu keys — blocked while any popup is open */
+      if (!popup_num_active(&demo_num_popup) && !popup_bool_active(&demo_bool_popup)) {
           if (key == 1)      menu_key_up(&menu_state);
           else if (key == 2) menu_key_down(&menu_state);
           else if (key == 3) menu_key_enter(&menu_state);
@@ -194,7 +202,8 @@ int main(void)
       u8g2_FirstPage(&u8g2);
       do {
           menu_render(&u8g2, &menu_state);
-          popup_render(&demo_popup, &u8g2);
+          popup_num_render(&demo_num_popup, &u8g2);
+          popup_bool_render(&demo_bool_popup, &u8g2);
       } while (u8g2_NextPage(&u8g2));
     /* USER CODE END WHILE */
 
@@ -252,7 +261,11 @@ static void show_info_action(void) {
 }
 
 static void brightness_action(void) {
-    popup_open(&demo_popup, "Brightness", &demo_brightness, 0, 100, 5);
+    popup_num_open(&demo_num_popup, "Brightness", &demo_brightness, 0, 100, 5);
+}
+
+static void power_action(void) {
+    popup_bool_open(&demo_bool_popup, "Power Save", &demo_power, "ON", "OFF");
 }
 /* USER CODE END 4 */
 

@@ -6,14 +6,7 @@
 #include "u8g2.h"
 #include "ux_move.h"
 
-typedef struct {
-    const char *title;
-    int16_t    *value;
-    int16_t     min;
-    int16_t     max;
-    int16_t     step;
-} popup_config_t;
-
+/* ========== shared state ========== */
 typedef enum {
     POPUP_IDLE,
     POPUP_OPENING,
@@ -21,17 +14,47 @@ typedef enum {
     POPUP_CLOSING,
 } popup_state_e;
 
+/* ========== numeric-adjust popup ========== */
+typedef struct {
+    const char *title;
+    int16_t    *value;
+    int16_t     min;
+    int16_t     max;
+    int16_t     step;
+} popup_num_cfg_t;
+
 typedef struct {
     popup_state_e  state;
-    popup_config_t cfg;
-    anim_ctrl_t    slide_anim;
-} popup_t;
+    popup_num_cfg_t cfg;
+    anim_ctrl_t    slide;
+} popup_num_t;
 
-void popup_init(popup_t *p);
-void popup_open(popup_t *p, const char *title, int16_t *value,
-                int16_t min, int16_t max, int16_t step);
-bool popup_is_active(const popup_t *p);
-void popup_update(popup_t *p, int8_t key);
-void popup_render(const popup_t *p, u8g2_t *u8g2);
+void popup_num_init(popup_num_t *p);
+void popup_num_open(popup_num_t *p, const char *title, int16_t *value,
+                    int16_t min, int16_t max, int16_t step);
+bool popup_num_active(const popup_num_t *p);
+void popup_num_update(popup_num_t *p, int8_t key);
+void popup_num_render(const popup_num_t *p, u8g2_t *u8g2);
+
+/* ========== boolean-toggle popup ========== */
+typedef struct {
+    const char *title;
+    bool       *value;
+    const char *text_on;
+    const char *text_off;
+} popup_bool_cfg_t;
+
+typedef struct {
+    popup_state_e    state;
+    popup_bool_cfg_t cfg;
+    anim_ctrl_t      slide;
+} popup_bool_t;
+
+void popup_bool_init(popup_bool_t *p);
+void popup_bool_open(popup_bool_t *p, const char *title, bool *value,
+                     const char *text_on, const char *text_off);
+bool popup_bool_active(const popup_bool_t *p);
+void popup_bool_update(popup_bool_t *p, int8_t key);
+void popup_bool_render(const popup_bool_t *p, u8g2_t *u8g2);
 
 #endif
