@@ -37,6 +37,9 @@ static void show_info_action(void);
 static void brightness_action(void);
 static void power_action(void);
 static void reset_action(void);
+static void custom_screen_action(void);
+static void menu_goto_root(menu_state_t *s);
+static void custom_screen_render(u8g2_t *u8g2);
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,6 +60,9 @@ static void reset_action(void);
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+/* --- custom screen flag --- */
+static bool in_custom_screen = false;
+
 /* --- submenu pages --- */
 static const menu_item_t settings_items[] = {
     {"Brightness", brightness_action, NULL},
@@ -98,8 +104,9 @@ static menu_page_t about_page = {
 
 /* --- root menu --- */
 static menu_item_t root_items[] = {
-    {"Test Animation", test_action,      NULL},
-    {"Show Info",      show_info_action, NULL},
+    {"Custom Screen",  custom_screen_action, NULL},
+    {"Test Animation", test_action,          NULL},
+    {"Show Info",      show_info_action,     NULL},
     {"Settings",       NULL,             &settings_page},
     {"Display",        NULL,             &display_page},
     {"About",          NULL,             &about_page},
@@ -191,28 +198,42 @@ int main(void)
 
       int8_t key = Key();
 
-      /* popups consume keys only when active (idle = no-op) */
-      popup_num_update(&demo_num_popup, key);
-      popup_bool_update(&demo_bool_popup, key);
-      popup_toast_update(&toast);   /* auto-closes, no key input */
+      if (in_custom_screen) {
+          /* ---- custom screen mode ---- */
+          if (key == 4) {
+              in_custom_screen = false;   /* Back key returns to menu */
+          }
 
-      /* menu keys — blocked while any popup is open */
-      if (!popup_num_active(&demo_num_popup) &&
-          !popup_bool_active(&demo_bool_popup) &&
-          !popup_toast_active(&toast)) {
-          if (key == 1)      menu_key_up(&menu_state);
-          else if (key == 2) menu_key_down(&menu_state);
-          else if (key == 3) menu_key_enter(&menu_state);
-          else if (key == 4) menu_key_back(&menu_state);
+          u8g2_FirstPage(&u8g2);
+          do {
+              custom_screen_render(&u8g2);
+          } while (u8g2_NextPage(&u8g2));
+      } else {
+          /* ---- normal menu mode ---- */
+
+          /* popups consume keys only when active (idle = no-op) */
+          popup_num_update(&demo_num_popup, key);
+          popup_bool_update(&demo_bool_popup, key);
+          popup_toast_update(&toast);
+
+          /* menu keys — blocked while any popup is open */
+          if (!popup_num_active(&demo_num_popup) &&
+              !popup_bool_active(&demo_bool_popup) &&
+              !popup_toast_active(&toast)) {
+              if (key == 1)      menu_key_up(&menu_state);
+              else if (key == 2) menu_key_down(&menu_state);
+              else if (key == 3) menu_key_enter(&menu_state);
+              else if (key == 4) menu_key_back(&menu_state);
+          }
+
+          u8g2_FirstPage(&u8g2);
+          do {
+              menu_render(&u8g2, &menu_state);
+              popup_num_render(&demo_num_popup, &u8g2);
+              popup_bool_render(&demo_bool_popup, &u8g2);
+              popup_toast_render(&toast, &u8g2);
+          } while (u8g2_NextPage(&u8g2));
       }
-
-      u8g2_FirstPage(&u8g2);
-      do {
-          menu_render(&u8g2, &menu_state);
-          popup_num_render(&demo_num_popup, &u8g2);
-          popup_bool_render(&demo_bool_popup, &u8g2);
-          popup_toast_render(&toast, &u8g2);
-      } while (u8g2_NextPage(&u8g2));
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -278,6 +299,32 @@ static void power_action(void) {
 
 static void reset_action(void) {
     popup_toast_show(&toast, "Settings cleared");
+}
+
+/* ======== custom screen demo ======== */
+static void custom_screen_action(void) {
+    in_custom_screen = true;
+}
+
+static void custom_screen_render(u8g2_t *u8g2) {
+    u8g2_SetFontMode(u8g2, 1);
+    u8g2_SetFont(u8g2, u8g2_font_helvB10_tr);
+    u8g2_SetDrawColor(u8g2, 1);
+    u8g2_DrawStr(u8g2, 10, 25, "Custom Display");
+    u8g2_DrawHLine(u8g2, 10, 30, 108);
+    u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
+    u8g2_DrawStr(u8g2, 10, 45, "Press BACK to return.");
+    u8g2_DrawStr(u8g2, 10, 56, "This is your own screen.");
+}
+
+/* ======== return to root from any depth ======== */
+static void menu_goto_root(menu_state_t *s) {
+    s->current   = &root_page;
+    s->selected  = 0;
+    anim_set_position(&s->scroll_anim, 0, 0);
+    s->scroll_target = 0;
+    s->bar_target_y  = -1;
+    s->bar_target_w  = -1;
 }
 /* USER CODE END 4 */
 
