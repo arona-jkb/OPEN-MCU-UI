@@ -187,6 +187,7 @@ int main(void)
   while (1)
   {
       anim_manager_update();
+      menu_update(&menu_state);
 
       int8_t key = Key();
 
