@@ -204,10 +204,9 @@ int main(void)
               in_custom_screen = false;   /* Back key returns to menu */
           }
 
-          u8g2_FirstPage(&u8g2);
-          do {
+            u8g2_ClearBuffer(&u8g2);
               custom_screen_render(&u8g2);
-          } while (u8g2_NextPage(&u8g2));
+            u8g2_SendBuffer(&u8g2);
       } else {
           /* ---- normal menu mode ---- */
 
@@ -226,13 +225,12 @@ int main(void)
               else if (key == 4) menu_key_back(&menu_state);
           }
 
-          u8g2_FirstPage(&u8g2);
-          do {
+            u8g2_ClearBuffer(&u8g2);
               menu_render(&u8g2, &menu_state);
               popup_num_render(&demo_num_popup, &u8g2);
               popup_bool_render(&demo_bool_popup, &u8g2);
               popup_toast_render(&toast, &u8g2);
-          } while (u8g2_NextPage(&u8g2));
+            u8g2_SendBuffer(&u8g2);
       }
     /* USER CODE END WHILE */
 
