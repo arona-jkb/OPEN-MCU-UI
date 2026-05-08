@@ -18,7 +18,8 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "i2c.h"
+#include "dma.h"
+#include "spi.h"
 #include "tim.h"
 #include "gpio.h"
 
@@ -92,7 +93,7 @@ static menu_page_t display_page = {
 static const menu_item_t about_items[] = {
     {"STM32F103 GUI", NULL, NULL},
     {"u8g2 + SSD1306", NULL, NULL},
-    {"v1.0  2026-05", NULL, NULL},
+    {"v2.0  2026-05", NULL, NULL},
 };
 
 static menu_page_t about_page = {
@@ -170,12 +171,13 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
+  MX_DMA_Init();
   MX_TIM1_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_Base_Start(&htim1);
-  u8g2_t u8g2;
-  u8g2Init(&u8g2);
+ u8g2_t u8g2; // 显示器初始化结构体
+  MD_OLED_RST_Set(); //显示器复位拉高
+  u8g2Init(&u8g2);   //显示器调用初始化函数
 
   /* wire parent pointers */
   root_page.parent    = NULL;

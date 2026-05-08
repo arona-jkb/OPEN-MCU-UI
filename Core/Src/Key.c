@@ -1,6 +1,7 @@
 // 按键驱动文件，在使用时请使用CubeMX生成与PA3，PA4，PA5，PA6引脚的初始化
 #include "Key.h"
 #include "main.h"
+#include "stdbool.h"
 
 unsigned char Key_KeyNumber;
 
@@ -17,21 +18,8 @@ unsigned char Key(void)
 	return Temp;
 }
 
-/**
-  * @brief  获取当前按键的状态，无消抖及松手检测
-  * @param  无
-  * @retval 按下按键的键码，范围：0,1~4,0表示无按键按下
-  */
-unsigned char Key_GetState()
-{
-	unsigned char KeyNumber=0;
-	
-	if(HAL_GPIO_ReadPin(user_key_GPIO_Port, user_key_Pin)==GPIO_PIN_RESET){KeyNumber=4;}
-	if(HAL_GPIO_ReadPin(key1_GPIO_Port, key1_Pin)==GPIO_PIN_RESET){KeyNumber=1;}
-	if(HAL_GPIO_ReadPin(key2_GPIO_Port, key2_Pin)==GPIO_PIN_RESET){KeyNumber=2;}
-	if(HAL_GPIO_ReadPin(key3_GPIO_Port, key3_Pin)==GPIO_PIN_RESET){KeyNumber=3;}
-	return KeyNumber;
-}
+/* 每个按键独立追踪上一拍状态，避免某脚被外部拉死时阻塞全部按键 */
+static bool k1_last, k2_last, k3_last, k4_last;
 
 /**
   * @brief  按键驱动函数，在中断中及其类似物中调用，建议每20ms调用一次
@@ -40,24 +28,19 @@ unsigned char Key_GetState()
   */
 void Key_Tick(void)
 {
-	static unsigned char NowState,LastState;
-	LastState=NowState;				//按键状态更新
-	NowState=Key_GetState();		//获取当前按键状态
-	//如果上个时间点按键按下，这个时间点未按下，则是松手瞬间，以此避免消抖和松手检测
-	if(LastState==1 && NowState==0)
-	{
-		Key_KeyNumber=1;
-	}
-	if(LastState==2 && NowState==0)
-	{
-		Key_KeyNumber=2;
-	}
-	if(LastState==3 && NowState==0)
-	{
-		Key_KeyNumber=3;
-	}
-	if(LastState==4 && NowState==0)
-	{
-		Key_KeyNumber=4;
-	}
+	bool k1 = (HAL_GPIO_ReadPin(key1_GPIO_Port, key1_Pin) == GPIO_PIN_RESET);
+	bool k2 = (HAL_GPIO_ReadPin(key2_GPIO_Port, key2_Pin) == GPIO_PIN_RESET);
+	bool k3 = (HAL_GPIO_ReadPin(key3_GPIO_Port, key3_Pin) == GPIO_PIN_RESET);
+	bool k4 = (HAL_GPIO_ReadPin(key4_GPIO_Port, key4_Pin) == GPIO_PIN_RESET);
+
+	/* 检测松手：上一拍按下 且 当前拍未按下 */
+	if (k1_last && !k1) { Key_KeyNumber = 1; }
+	if (k2_last && !k2) { Key_KeyNumber = 2; }
+	if (k3_last && !k3) { Key_KeyNumber = 3; }
+	if (k4_last && !k4) { Key_KeyNumber = 4; }
+
+	k1_last = k1;
+	k2_last = k2;
+	k3_last = k3;
+	k4_last = k4;
 }
