@@ -6,7 +6,7 @@
 #include "u8g2.h"
 #include "ux_move.h"
 
-#define MENU_LINE_HEIGHT  12
+#define MENU_LINE_HEIGHT  13
 #define MENU_TITLE_HEIGHT  12
 
 typedef struct menu_item {
@@ -36,6 +36,9 @@ typedef struct {
     anim_ctrl_t bar_anim;
     int16_t  bar_target_y;
     int16_t  bar_target_w;
+    /* scroll progress indicator */
+    anim_ctrl_t prog_anim;
+    int16_t     prog_target;
     /* page transition */
     menu_trans_e       trans;
     const menu_page_t *trans_old;

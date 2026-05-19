@@ -48,6 +48,8 @@ void menu_init(menu_state_t *state, const menu_page_t *root) {
     anim_init(&state->bar_anim);
     state->bar_target_y = -1;
     state->bar_target_w = -1;
+    anim_init(&state->prog_anim);
+    state->prog_target = -1;
     state->trans = TRANS_NONE;
     anim_init(&state->trans_anim);
 }
@@ -61,6 +63,7 @@ void menu_update(menu_state_t *state) {
         state->scroll_target = 0;
         state->bar_target_y = -1;
         state->bar_target_w = -1;
+        state->prog_target  = -1;
     }
 }
 
@@ -80,13 +83,13 @@ static void render_page_slide(u8g2_t *u8g2, const menu_page_t *page,
         u8g2_DrawStr(u8g2, 4 + BOX_PAD_X, y, page->items[i].name);
     }
 
-    /* sliding title bar — white box + black text + separator at title_y */
-    u8g2_SetDrawColor(u8g2, 1);
+    /* sliding title bar — black fill + white text + separator at title_y */
+    u8g2_SetDrawColor(u8g2, 0);
     u8g2_DrawBox(u8g2, 0, title_y - ttl + 1, 128, ttl);
+    u8g2_SetDrawColor(u8g2, 1);
     u8g2_DrawHLine(u8g2, 0, title_y, 128);
     u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
     if (title_y >= 3 && title_y <= 63) {
-        u8g2_SetDrawColor(u8g2, 0);
         u8g2_DrawStr(u8g2, 2, title_y - 3, page->title);
     }
 }
@@ -177,13 +180,30 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
             u8g2_DrawRBox(u8g2, bx, bar_y, bar_w, box_h, BOX_RADIUS);
         }
 
-        /* ---- title bar (last, masks scrolled text) ---- */
-        u8g2_SetDrawColor(u8g2, 1);
-        u8g2_DrawBox(u8g2, 0, 0, 128, VISIBLE_TOP);
+        /* ---- scroll progress indicator (right edge, animated) ---- */
+        if (page->count > 1) {
+            int16_t max_h = 64 - VISIBLE_TOP;
+            int16_t targ = (int16_t)state->selected * max_h / (int16_t)(page->count - 1);
+            if (targ != state->prog_target) {
+                int16_t start_h = state->prog_anim.cur_y;
+                if (state->prog_target < 0) start_h = targ;
+                anim_start(&state->prog_anim, 0, start_h, 0, targ,
+                           BAR_ANIM_MS, quad_ease_out);
+                state->prog_target = targ;
+            }
+            int16_t h = state->prog_anim.cur_y;
+            if (h > 0) {
+                u8g2_SetDrawColor(u8g2, 1);
+                u8g2_DrawBox(u8g2, 125, VISIBLE_TOP, 3, h);
+            }
+        }
+
+        /* ---- title bar (black fill, white text + separator) ---- */
         u8g2_SetDrawColor(u8g2, 0);
+        u8g2_DrawBox(u8g2, 0, 0, 128, VISIBLE_TOP);
+        u8g2_SetDrawColor(u8g2, 1);
         u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
         u8g2_DrawStr(u8g2, 2, VISIBLE_TOP - 3, page->title);
-        u8g2_SetDrawColor(u8g2, 1);
         u8g2_DrawHLine(u8g2, 0, VISIBLE_TOP - 1, 128);
     }
 }
