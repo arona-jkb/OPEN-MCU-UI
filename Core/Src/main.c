@@ -29,6 +29,7 @@
 #include "u8g2.h"
 #include "menu.h"
 #include "popup.h"
+#include "splash.h"
 #include "Key.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -120,7 +121,8 @@ static menu_page_t root_page = {
     .parent = NULL,
 };
 
-/* --- global menu state --- */
+/* --- splash & menu --- */
+static splash_t     splash;
 static menu_state_t menu_state;
 
 /* --- popup demo variables --- */
@@ -185,6 +187,7 @@ int main(void)
   display_page.parent  = &root_page;
   about_page.parent    = &root_page;
 
+  splash_init(&splash);
   menu_init(&menu_state, &root_page);
   popup_num_init(&demo_num_popup);
   popup_bool_init(&demo_bool_popup);
@@ -197,27 +200,34 @@ int main(void)
   {
       anim_manager_update();
       menu_update(&menu_state);
+      splash_update(&splash);
 
       int8_t key = Key();
 
-      if (in_custom_screen) {
+      if (!splash_done(&splash)) {
+          /* ---- splash screen ---- */
+          u8g2_ClearBuffer(&u8g2);
+          /* render menu as background during exit */
+          if (splash.state == SPLASH_EXIT) {
+              menu_render(&u8g2, &menu_state);
+          }
+          splash_render(&splash, &u8g2);
+          u8g2_SendBuffer(&u8g2);
+      } else if (in_custom_screen) {
           /* ---- custom screen mode ---- */
           if (key == 4) {
-              in_custom_screen = false;   /* Back key returns to menu */
+              in_custom_screen = false;
           }
-
-            u8g2_ClearBuffer(&u8g2);
-              custom_screen_render(&u8g2);
-            u8g2_SendBuffer(&u8g2);
+          u8g2_ClearBuffer(&u8g2);
+            custom_screen_render(&u8g2);
+          u8g2_SendBuffer(&u8g2);
       } else {
           /* ---- normal menu mode ---- */
 
-          /* popups consume keys only when active (idle = no-op) */
           popup_num_update(&demo_num_popup, key);
           popup_bool_update(&demo_bool_popup, key);
           popup_toast_update(&toast);
 
-          /* menu keys — blocked while any popup is open */
           if (!popup_num_active(&demo_num_popup) &&
               !popup_bool_active(&demo_bool_popup) &&
               !popup_toast_active(&toast)) {
@@ -227,12 +237,12 @@ int main(void)
               else if (key == 4) menu_key_back(&menu_state);
           }
 
-            u8g2_ClearBuffer(&u8g2);
-              menu_render(&u8g2, &menu_state);
-              popup_num_render(&demo_num_popup, &u8g2);
-              popup_bool_render(&demo_bool_popup, &u8g2);
-              popup_toast_render(&toast, &u8g2);
-            u8g2_SendBuffer(&u8g2);
+          u8g2_ClearBuffer(&u8g2);
+            menu_render(&u8g2, &menu_state);
+            popup_num_render(&demo_num_popup, &u8g2);
+            popup_bool_render(&demo_bool_popup, &u8g2);
+            popup_toast_render(&toast, &u8g2);
+          u8g2_SendBuffer(&u8g2);
       }
     /* USER CODE END WHILE */
 
