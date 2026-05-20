@@ -126,11 +126,14 @@ static splash_t     splash;
 static menu_state_t menu_state;
 
 /* --- popup demo variables --- */
-static int16_t     demo_brightness = 50;
-static popup_num_t demo_num_popup;
-static bool        demo_power = true;
+static int16_t      demo_brightness = 50;
+static popup_num_t  demo_num_popup;
+static popup_base_t demo_num_base;
+static bool         demo_power = true;
 static popup_bool_t demo_bool_popup;
+static popup_base_t demo_bool_base;
 static popup_toast_t toast;
+static popup_base_t toast_base;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -189,9 +192,10 @@ int main(void)
 
   splash_init(&splash);
   menu_init(&menu_state, &root_page);
-  popup_num_init(&demo_num_popup);
-  popup_bool_init(&demo_bool_popup);
-  popup_toast_init(&toast);
+  popup_mgr_init();
+  popup_num_init(&demo_num_popup, &demo_num_base);
+  popup_bool_init(&demo_bool_popup, &demo_bool_base);
+  popup_toast_init(&toast, &toast_base);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -224,13 +228,9 @@ int main(void)
       } else {
           /* ---- normal menu mode ---- */
 
-          popup_num_update(&demo_num_popup, key);
-          popup_bool_update(&demo_bool_popup, key);
-          popup_toast_update(&toast);
+          popup_mgr_update(key);
 
-          if (!popup_num_active(&demo_num_popup) &&
-              !popup_bool_active(&demo_bool_popup) &&
-              !popup_toast_active(&toast)) {
+          if (!popup_mgr_any_active()) {
               if (key == 1)      menu_key_up(&menu_state);
               else if (key == 2) menu_key_down(&menu_state);
               else if (key == 3) menu_key_enter(&menu_state);
@@ -239,9 +239,7 @@ int main(void)
 
           u8g2_ClearBuffer(&u8g2);
             menu_render(&u8g2, &menu_state);
-            popup_num_render(&demo_num_popup, &u8g2);
-            popup_bool_render(&demo_bool_popup, &u8g2);
-            popup_toast_render(&toast, &u8g2);
+            popup_mgr_render(&u8g2);
           u8g2_SendBuffer(&u8g2);
       }
     /* USER CODE END WHILE */
