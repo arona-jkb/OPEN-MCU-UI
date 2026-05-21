@@ -1,9 +1,19 @@
+/**
+ * 菜单模块实现
+ *
+ * 核心功能:
+ *   - 多级层次菜单, 支持页面切换动画
+ *   - 边界触发式滚动 (选中项碰顶/触底时整体文字才滚动)
+ *   - 选择条独立动画 (位置 + 宽度, 由 bar_anim 驱动)
+ *   - 右侧滚动进度指示条 (由 prog_anim 驱动)
+ *   - XOR 模式选择框 (颜色 2), 与菜单文字自然叠加
+ */
 #include "menu.h"
 #include "ui_timing.h"
 
-#define BOX_PAD_X    5
-#define BOX_PAD_Y    1
-#define BOX_RADIUS   2
+#define BOX_PAD_X    5                    /* 选择框左右内边距      */
+#define BOX_PAD_Y    1                    /* 选择框上下内边距      */
+#define BOX_RADIUS   2                    /* 选择框圆角半径        */
 
 #define VISIBLE_TOP    MENU_TITLE_HEIGHT
 #define VISIBLE_BOTTOM (64 - MENU_LINE_HEIGHT)

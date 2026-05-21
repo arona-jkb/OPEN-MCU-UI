@@ -92,7 +92,7 @@ static menu_page_t display_page = {
 static const menu_item_t about_items[] = {
     {"STM32F103 GUI", NULL, NULL},
     {"u8g2 + SSD1306", NULL, NULL},
-    {"v2.0  2026-05", NULL, NULL},
+    {"v3.0  2026-05",  NULL, NULL},
 };
 
 static menu_page_t about_page = {

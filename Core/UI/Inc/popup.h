@@ -6,19 +6,22 @@
 #include "u8g2.h"
 #include "ux_move.h"
 
-/* ========== shared state ========== */
+/* ---------- 共享状态 ---------- */
+
 typedef enum {
-    POPUP_IDLE,
-    POPUP_OPENING,
-    POPUP_ACTIVE,
-    POPUP_CLOSING,
+    POPUP_IDLE,                           /* 空闲      */
+    POPUP_OPENING,                        /* 打开动画中 */
+    POPUP_ACTIVE,                         /* 可操作    */
+    POPUP_CLOSING,                        /* 关闭动画中 */
 } popup_state_e;
 
-/* ========== popup manager ========== */
+/* ---------- 弹窗管理器 ---------- */
+
 typedef bool (*popup_active_fn)(void *p);
 typedef void (*popup_update_fn)(void *p, int8_t key);
 typedef void (*popup_render_fn)(void *p, u8g2_t *u8g2);
 
+/* 管理器基类 — 每个弹窗实例配套一个, init 时自动注册 */
 typedef struct {
     void            *instance;
     popup_active_fn  active;
@@ -30,52 +33,55 @@ typedef struct {
 
 void popup_mgr_init(void);
 bool popup_mgr_register(popup_base_t *p);
-bool popup_mgr_any_active(void);
-void popup_mgr_update(int8_t key);
-void popup_mgr_render(u8g2_t *u8g2);
+bool popup_mgr_any_active(void);          /* 任一弹窗激活中 */
+void popup_mgr_update(int8_t key);        /* 遍历所有弹窗的 update */
+void popup_mgr_render(u8g2_t *u8g2);      /* 遍历所有弹窗的 render */
 
-/* ========== numeric-adjust popup ========== */
+/* ---------- 数值调节弹窗 ---------- */
+
 typedef struct {
     const char *title;
-    int16_t    *value;
+    int16_t    *value;                    /* 指向被调节的变量 */
     int16_t     min;
     int16_t     max;
     int16_t     step;
 } popup_value_cfg_t;
 
 typedef struct {
-    popup_state_e  state;
+    popup_state_e     state;
     popup_value_cfg_t cfg;
-    anim_ctrl_t    slide;
+    anim_ctrl_t       slide;              /* 滑入/滑出动画 */
 } popup_value_t;
 
 void popup_value_init(popup_value_t *p, popup_base_t *b);
 void popup_value_open(popup_value_t *p, const char *title, int16_t *value,
-                    int16_t min, int16_t max, int16_t step);
+                      int16_t min, int16_t max, int16_t step);
 
-/* ========== boolean-toggle popup ========== */
+/* ---------- 开关弹窗 ---------- */
+
 typedef struct {
     const char *title;
-    bool       *value;
+    bool       *value;                    /* 指向被翻转的变量 */
     const char *text_on;
     const char *text_off;
 } popup_toggle_cfg_t;
 
 typedef struct {
-    popup_state_e    state;
+    popup_state_e      state;
     popup_toggle_cfg_t cfg;
-    anim_ctrl_t      slide;
+    anim_ctrl_t        slide;
 } popup_toggle_t;
 
 void popup_toggle_init(popup_toggle_t *p, popup_base_t *b);
 void popup_toggle_open(popup_toggle_t *p, const char *title, bool *value,
-                     const char *text_on, const char *text_off);
+                       const char *text_on, const char *text_off);
 
-/* ========== toast notification popup ========== */
+/* ---------- Toast 通知弹窗 ---------- */
+
 typedef struct {
     popup_state_e state;
-    const char   *text;
-    uint32_t      open_time;
+    const char   *text;                   /* 显示文字(指针, 不拷贝) */
+    uint32_t      open_time;              /* 打开时刻 (HAL_GetTick) */
     anim_ctrl_t   slide;
 } popup_toast_t;
 
