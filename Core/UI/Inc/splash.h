@@ -26,4 +26,9 @@ bool splash_done(const splash_t *s);
 void splash_update(splash_t *s);
 void splash_render(const splash_t *s, u8g2_t *u8g2);
 
+/* all-in-one: clear → bg → splash → send */
+void splash_render_frame(const splash_t *s, u8g2_t *u8g2,
+                         void (*bg_render)(void *ctx, u8g2_t *u8g2),
+                         void *bg_ctx);
+
 #endif

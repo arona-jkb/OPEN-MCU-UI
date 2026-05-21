@@ -27,21 +27,18 @@
 /* USER CODE BEGIN Includes */
 #include "stm32_u8g2.h"
 #include "u8g2.h"
-#include "menu.h"
-#include "popup.h"
-#include "splash.h"
+#include "app_ui.h"
 #include "Key.h"
-#include <stdint.h>
-#include <stdio.h>
 
+/* forward declarations — must precede PV menu definitions */
 static void test_action(void);
 static void show_info_action(void);
 static void brightness_action(void);
 static void power_action(void);
 static void reset_action(void);
-static void custom_screen_action(void);
-static void menu_goto_root(menu_state_t *s);
-static void custom_screen_render(u8g2_t *u8g2);
+static void custom_screen1_action(void);
+static void custom_screen2_action(void);
+static void my_custom_render(u8g2_t *u8g2, uint8_t id);
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -62,8 +59,9 @@ static void custom_screen_render(u8g2_t *u8g2);
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-/* --- custom screen flag --- */
-static bool in_custom_screen = false;
+/* demo variables referenced by action callbacks */
+static int16_t demo_brightness = 50;
+static bool    demo_power = true;
 
 /* --- submenu pages --- */
 static const menu_item_t settings_items[] = {
@@ -76,7 +74,7 @@ static menu_page_t settings_page = {
     .title  = "Settings",
     .items  = settings_items,
     .count  = sizeof(settings_items) / sizeof(settings_items[0]),
-    .parent = NULL,  /* set at runtime */
+    .parent = NULL,
 };
 
 static const menu_item_t display_items[] = {
@@ -106,12 +104,13 @@ static menu_page_t about_page = {
 
 /* --- root menu --- */
 static menu_item_t root_items[] = {
-    {"Custom Screen",  custom_screen_action, NULL},
-    {"Test Animation", test_action,          NULL},
-    {"Show Info",      show_info_action,     NULL},
-    {"Settings",       NULL,             &settings_page},
-    {"Display",        NULL,             &display_page},
-    {"About",          NULL,             &about_page},
+    {"Custom Screen 1", custom_screen1_action, NULL},
+    {"Custom Screen 2", custom_screen2_action, NULL},
+    {"Test Animation",  test_action,           NULL},
+    {"Show Info",       show_info_action,      NULL},
+    {"Settings",       NULL,                 &settings_page},
+    {"Display",        NULL,                 &display_page},
+    {"About",          NULL,                 &about_page},
 };
 
 static menu_page_t root_page = {
@@ -120,32 +119,53 @@ static menu_page_t root_page = {
     .count  = sizeof(root_items) / sizeof(root_items[0]),
     .parent = NULL,
 };
-
-/* --- splash & menu --- */
-static splash_t     splash;
-static menu_state_t menu_state;
-
-/* --- popup demo variables --- */
-static int16_t      demo_brightness = 50;
-static popup_num_t  demo_num_popup;
-static popup_base_t demo_num_base;
-static bool         demo_power = true;
-static popup_bool_t demo_bool_popup;
-static popup_base_t demo_bool_base;
-static popup_toast_t toast;
-static popup_base_t toast_base;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-static void test_action(void);
-static void show_info_action(void);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+static void test_action(void)            { __NOP(); }
+static void show_info_action(void)       { __NOP(); }
 
+static void brightness_action(void) {
+    app_ui_value_open("Brightness", &demo_brightness, 0, 100, 5);
+}
+
+static void power_action(void) {
+    app_ui_toggle_open("Power Save", &demo_power, "ON", "OFF");
+}
+
+static void reset_action(void) {
+    app_ui_toast_show("Settings cleared");
+}
+
+static void custom_screen1_action(void) { app_ui_custom_screen_enter(1); }
+static void custom_screen2_action(void) { app_ui_custom_screen_enter(2); }
+
+static void my_custom_render(u8g2_t *u8g2, uint8_t id) {
+    u8g2_SetFontMode(u8g2, 1);
+    if (id == 1) {
+        u8g2_SetFont(u8g2, u8g2_font_helvB10_tr);
+        u8g2_SetDrawColor(u8g2, 1);
+        u8g2_DrawStr(u8g2, 10, 25, "Custom Screen 1");
+        u8g2_DrawHLine(u8g2, 10, 30, 108);
+        u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
+        u8g2_DrawStr(u8g2, 10, 45, "Press BACK to return.");
+    } else {
+        u8g2_SetFont(u8g2, u8g2_font_helvB10_tr);
+        u8g2_SetDrawColor(u8g2, 1);
+        u8g2_DrawStr(u8g2, 10, 20, "Custom Screen 2");
+        u8g2_DrawHLine(u8g2, 10, 26, 108);
+        u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
+        u8g2_DrawStr(u8g2, 10, 40, "Another screen.");
+        u8g2_DrawStr(u8g2, 10, 52, "Back key exits.");
+    }
+}
 /* USER CODE END 0 */
 
 /**
@@ -180,22 +200,17 @@ int main(void)
   MX_TIM1_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
- u8g2_t u8g2; // 显示器初始化结构体
-  MD_OLED_RST_Set(); //显示器复位拉高
-  u8g2Init(&u8g2);   //显示器调用初始化函数
+  u8g2_t u8g2;
+  MD_OLED_RST_Set();
+  u8g2Init(&u8g2);
 
   /* wire parent pointers */
-  root_page.parent    = NULL;
   settings_page.parent = &root_page;
   display_page.parent  = &root_page;
   about_page.parent    = &root_page;
 
-  splash_init(&splash);
-  menu_init(&menu_state, &root_page);
-  popup_mgr_init();
-  popup_num_init(&demo_num_popup, &demo_num_base);
-  popup_bool_init(&demo_bool_popup, &demo_bool_base);
-  popup_toast_init(&toast, &toast_base);
+  app_ui_init(&u8g2, &root_page);
+  app_ui_set_custom_render(my_custom_render);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -203,45 +218,10 @@ int main(void)
   while (1)
   {
       anim_manager_update();
-      menu_update(&menu_state);
-      splash_update(&splash);
 
       int8_t key = Key();
-
-      if (!splash_done(&splash)) {
-          /* ---- splash screen ---- */
-          u8g2_ClearBuffer(&u8g2);
-          /* render menu as background during exit */
-          if (splash.state == SPLASH_EXIT) {
-              menu_render(&u8g2, &menu_state);
-          }
-          splash_render(&splash, &u8g2);
-          u8g2_SendBuffer(&u8g2);
-      } else if (in_custom_screen) {
-          /* ---- custom screen mode ---- */
-          if (key == 4) {
-              in_custom_screen = false;
-          }
-          u8g2_ClearBuffer(&u8g2);
-            custom_screen_render(&u8g2);
-          u8g2_SendBuffer(&u8g2);
-      } else {
-          /* ---- normal menu mode ---- */
-
-          popup_mgr_update(key);
-
-          if (!popup_mgr_any_active()) {
-              if (key == 1)      menu_key_up(&menu_state);
-              else if (key == 2) menu_key_down(&menu_state);
-              else if (key == 3) menu_key_enter(&menu_state);
-              else if (key == 4) menu_key_back(&menu_state);
-          }
-
-          u8g2_ClearBuffer(&u8g2);
-            menu_render(&u8g2, &menu_state);
-            popup_mgr_render(&u8g2);
-          u8g2_SendBuffer(&u8g2);
-      }
+      app_ui_update(key);
+      app_ui_render(&u8g2);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -289,51 +269,7 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-static void test_action(void) {
-    __NOP();
-}
 
-static void show_info_action(void) {
-    __NOP();
-}
-
-static void brightness_action(void) {
-    popup_num_open(&demo_num_popup, "Brightness", &demo_brightness, 0, 100, 5);
-}
-
-static void power_action(void) {
-    popup_bool_open(&demo_bool_popup, "Power Save", &demo_power, "ON", "OFF");
-}
-
-static void reset_action(void) {
-    popup_toast_show(&toast, "Settings cleared");
-}
-
-/* ======== custom screen demo ======== */
-static void custom_screen_action(void) {
-    in_custom_screen = true;
-}
-
-static void custom_screen_render(u8g2_t *u8g2) {
-    u8g2_SetFontMode(u8g2, 1);
-    u8g2_SetFont(u8g2, u8g2_font_helvB10_tr);
-    u8g2_SetDrawColor(u8g2, 1);
-    u8g2_DrawStr(u8g2, 10, 25, "Custom Display");
-    u8g2_DrawHLine(u8g2, 10, 30, 108);
-    u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
-    u8g2_DrawStr(u8g2, 10, 45, "Press BACK to return.");
-    u8g2_DrawStr(u8g2, 10, 56, "This is your own screen.");
-}
-
-/* ======== return to root from any depth ======== */
-static void menu_goto_root(menu_state_t *s) {
-    s->current   = &root_page;
-    s->selected  = 0;
-    anim_set_position(&s->scroll_anim, 0, 0);
-    s->scroll_target = 0;
-    s->bar_target_y  = -1;
-    s->bar_target_w  = -1;
-}
 /* USER CODE END 4 */
 
 /**

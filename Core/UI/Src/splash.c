@@ -1,8 +1,5 @@
 #include "splash.h"
-
-#define ENTER_MS  500
-#define HOLD_MS   1000
-#define EXIT_MS   400
+#include "ui_timing.h"
 #define START_Y   (-15)
 #define LINE1_Y   28
 #define LINE2_Y   45
@@ -15,9 +12,9 @@ void splash_init(splash_t *s) {
     anim_init(&s->border);
 
     /* all three start from same Y above screen, fly to their targets */
-    anim_start(&s->line1,  0, START_Y, 0, LINE1_Y,  ENTER_MS, quad_ease_out);
-    anim_start(&s->line2,  0, START_Y, 0, LINE2_Y,  ENTER_MS, quad_ease_out);
-    anim_start(&s->border, 0, START_Y, 0, BORDER_Y, ENTER_MS, quad_ease_out);
+    anim_start(&s->line1,  0, START_Y, 0, LINE1_Y,  SPLASH_ENTER_MS, quad_ease_out);
+    anim_start(&s->line2,  0, START_Y, 0, LINE2_Y,  SPLASH_ENTER_MS, quad_ease_out);
+    anim_start(&s->border, 0, START_Y, 0, BORDER_Y, SPLASH_ENTER_MS, quad_ease_out);
 }
 
 bool splash_done(const splash_t *s) {
@@ -35,11 +32,11 @@ void splash_update(splash_t *s) {
         break;
 
     case SPLASH_HOLD:
-        if (HAL_GetTick() - s->hold_start >= HOLD_MS) {
+        if (HAL_GetTick() - s->hold_start >= SPLASH_HOLD_MS) {
             /* fly back up */
-            anim_start(&s->line1,  0, s->line1.cur_y,  0, START_Y, EXIT_MS, quad_ease_out);
-            anim_start(&s->line2,  0, s->line2.cur_y,  0, START_Y, EXIT_MS, quad_ease_out);
-            anim_start(&s->border, 0, s->border.cur_y, 0, START_Y, EXIT_MS, quad_ease_out);
+            anim_start(&s->line1,  0, s->line1.cur_y,  0, START_Y, SPLASH_EXIT_MS, quad_ease_out);
+            anim_start(&s->line2,  0, s->line2.cur_y,  0, START_Y, SPLASH_EXIT_MS, quad_ease_out);
+            anim_start(&s->border, 0, s->border.cur_y, 0, START_Y, SPLASH_EXIT_MS, quad_ease_out);
             s->state = SPLASH_EXIT;
         }
         break;
@@ -97,4 +94,15 @@ void splash_render(const splash_t *s, u8g2_t *u8g2) {
         u8g2_SetDrawColor(u8g2, 1);
         u8g2_DrawStr(u8g2, (128 - (int16_t)w2) / 2, y2, l2);
     }
+}
+
+void splash_render_frame(const splash_t *s, u8g2_t *u8g2,
+                         void (*bg_render)(void *ctx, u8g2_t *u8g2),
+                         void *bg_ctx) {
+    u8g2_ClearBuffer(u8g2);
+    if (s->state == SPLASH_EXIT && bg_render) {
+        bg_render(bg_ctx, u8g2);
+    }
+    splash_render(s, u8g2);
+    u8g2_SendBuffer(u8g2);
 }

@@ -1,4 +1,5 @@
 #include "popup.h"
+#include "ui_timing.h"
 #include <stdio.h>
 
 /* ========== popup manager ========== */
@@ -44,14 +45,14 @@ void popup_mgr_render(u8g2_t *u8g2) {
 
 /* ========== numeric popup ========== */
 
-static void popup_num_update(popup_num_t *p, int8_t key);
-static void popup_num_render(const popup_num_t *p, u8g2_t *u8g2);
+static void popup_value_update(popup_value_t *p, int8_t key);
+static void popup_value_render(const popup_value_t *p, u8g2_t *u8g2);
 
-static bool num_active(void *p)    { return ((popup_num_t *)p)->state != POPUP_IDLE; }
-static void num_update(void *p, int8_t key) { popup_num_update((popup_num_t *)p, key); }
-static void num_render(void *p, u8g2_t *u8g2) { popup_num_render((popup_num_t *)p, u8g2); }
+static bool num_active(void *p)    { return ((popup_value_t *)p)->state != POPUP_IDLE; }
+static void num_update(void *p, int8_t key) { popup_value_update((popup_value_t *)p, key); }
+static void num_render(void *p, u8g2_t *u8g2) { popup_value_render((popup_value_t *)p, u8g2); }
 
-void popup_num_init(popup_num_t *p, popup_base_t *b) {
+void popup_value_init(popup_value_t *p, popup_base_t *b) {
     p->state = POPUP_IDLE;
     anim_init(&p->slide);
     b->instance = p;
@@ -61,7 +62,7 @@ void popup_num_init(popup_num_t *p, popup_base_t *b) {
     popup_mgr_register(b);
 }
 
-void popup_num_open(popup_num_t *p, const char *title, int16_t *value,
+void popup_value_open(popup_value_t *p, const char *title, int16_t *value,
                     int16_t min, int16_t max, int16_t step) {
     p->cfg.title = title;
     p->cfg.value = value;
@@ -69,10 +70,10 @@ void popup_num_open(popup_num_t *p, const char *title, int16_t *value,
     p->cfg.max   = max;
     p->cfg.step  = step;
     p->state     = POPUP_OPENING;
-    anim_start(&p->slide, 0, POPUP_OFF, 0, POPUP_Y, 300, quad_ease_out);
+    anim_start(&p->slide, 0, POPUP_OFF, 0, POPUP_Y, POPUP_OPEN_MS, quad_ease_out);
 }
 
-static void popup_num_update(popup_num_t *p, int8_t key) {
+static void popup_value_update(popup_value_t *p, int8_t key) {
     switch (p->state) {
     case POPUP_OPENING:
         if (p->slide.state == ANIM_FINISHED || p->slide.state == ANIM_IDLE)
@@ -86,7 +87,7 @@ static void popup_num_update(popup_num_t *p, int8_t key) {
             *p->cfg.value -= p->cfg.step;
             if (*p->cfg.value < p->cfg.min) *p->cfg.value = p->cfg.min;
         } else if (key == 3 || key == 4) {
-            anim_start(&p->slide, 0, p->slide.cur_y, 0, POPUP_OFF, 250, quad_ease_out);
+            anim_start(&p->slide, 0, p->slide.cur_y, 0, POPUP_OFF, POPUP_CLOSE_MS, quad_ease_out);
             p->state = POPUP_CLOSING;
         }
         break;
@@ -98,7 +99,7 @@ static void popup_num_update(popup_num_t *p, int8_t key) {
     }
 }
 
-static void popup_num_render(const popup_num_t *p, u8g2_t *u8g2) {
+static void popup_value_render(const popup_value_t *p, u8g2_t *u8g2) {
     if (p->state == POPUP_IDLE) return;
     int16_t py = p->slide.cur_y;
     int16_t px = (128 - POPUP_W) / 2;
@@ -140,34 +141,34 @@ static void popup_num_render(const popup_num_t *p, u8g2_t *u8g2) {
 
 /* ========== boolean popup ========== */
 
-static void popup_bool_update(popup_bool_t *p, int8_t key);
-static void popup_bool_render(const popup_bool_t *p, u8g2_t *u8g2);
+static void popup_toggle_update(popup_toggle_t *p, int8_t key);
+static void popup_toggle_render(const popup_toggle_t *p, u8g2_t *u8g2);
 
-static bool bool_active(void *p)  { return ((popup_bool_t *)p)->state != POPUP_IDLE; }
-static void bool_update(void *p, int8_t key) { popup_bool_update((popup_bool_t *)p, key); }
-static void bool_render(void *p, u8g2_t *u8g2) { popup_bool_render((popup_bool_t *)p, u8g2); }
+static bool tgl_active(void *p)  { return ((popup_toggle_t *)p)->state != POPUP_IDLE; }
+static void tgl_update(void *p, int8_t key) { popup_toggle_update((popup_toggle_t *)p, key); }
+static void tgl_render(void *p, u8g2_t *u8g2) { popup_toggle_render((popup_toggle_t *)p, u8g2); }
 
-void popup_bool_init(popup_bool_t *p, popup_base_t *b) {
+void popup_toggle_init(popup_toggle_t *p, popup_base_t *b) {
     p->state = POPUP_IDLE;
     anim_init(&p->slide);
     b->instance = p;
-    b->active   = bool_active;
-    b->update   = bool_update;
-    b->render   = bool_render;
+    b->active   = tgl_active;
+    b->update   = tgl_update;
+    b->render   = tgl_render;
     popup_mgr_register(b);
 }
 
-void popup_bool_open(popup_bool_t *p, const char *title, bool *value,
+void popup_toggle_open(popup_toggle_t *p, const char *title, bool *value,
                      const char *text_on, const char *text_off) {
     p->cfg.title    = title;
     p->cfg.value    = value;
     p->cfg.text_on  = text_on;
     p->cfg.text_off = text_off;
     p->state        = POPUP_OPENING;
-    anim_start(&p->slide, 0, POPUP_OFF, 0, POPUP_Y, 300, quad_ease_out);
+    anim_start(&p->slide, 0, POPUP_OFF, 0, POPUP_Y, POPUP_OPEN_MS, quad_ease_out);
 }
 
-static void popup_bool_update(popup_bool_t *p, int8_t key) {
+static void popup_toggle_update(popup_toggle_t *p, int8_t key) {
     switch (p->state) {
     case POPUP_OPENING:
         if (p->slide.state == ANIM_FINISHED || p->slide.state == ANIM_IDLE)
@@ -177,7 +178,7 @@ static void popup_bool_update(popup_bool_t *p, int8_t key) {
         if (key == 1 || key == 2) {
             *p->cfg.value = !*p->cfg.value;
         } else if (key == 3 || key == 4) {
-            anim_start(&p->slide, 0, p->slide.cur_y, 0, POPUP_OFF, 250, quad_ease_out);
+            anim_start(&p->slide, 0, p->slide.cur_y, 0, POPUP_OFF, POPUP_CLOSE_MS, quad_ease_out);
             p->state = POPUP_CLOSING;
         }
         break;
@@ -189,7 +190,7 @@ static void popup_bool_update(popup_bool_t *p, int8_t key) {
     }
 }
 
-static void popup_bool_render(const popup_bool_t *p, u8g2_t *u8g2) {
+static void popup_toggle_render(const popup_toggle_t *p, u8g2_t *u8g2) {
     if (p->state == POPUP_IDLE) return;
     int16_t py = p->slide.cur_y;
     int16_t px = (128 - POPUP_W) / 2;
@@ -234,8 +235,6 @@ static void popup_bool_render(const popup_bool_t *p, u8g2_t *u8g2) {
 #define TOAST_PAD_X   8
 #define TOAST_PAD_Y   5
 #define TOAST_R       3
-#define TOAST_MS      1000
-#define TOAST_ANIM_MS 180
 #define TOAST_H       18
 #define TOAST_Y       ((64 - TOAST_H) / 2)
 #define TOAST_OFF     (-TOAST_H)
@@ -271,7 +270,7 @@ static void popup_toast_update(popup_toast_t *p) {
             p->state = POPUP_ACTIVE;
         break;
     case POPUP_ACTIVE:
-        if (HAL_GetTick() - p->open_time >= TOAST_MS) {
+        if (HAL_GetTick() - p->open_time >= TOAST_DURATION) {
             anim_start(&p->slide, 0, p->slide.cur_y, 0, TOAST_OFF, TOAST_ANIM_MS, quad_ease_out);
             p->state = POPUP_CLOSING;
         }

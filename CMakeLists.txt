@@ -43,7 +43,7 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 )
 
 # 1. 添加头文件路径
-include_directories(Core/u8g2)
+include_directories(Core/u8g2 Core/UI/Inc)
 # 2. 自动收集所有 .c 源文件
 file(GLOB U8G2_SOURCES "Core/u8g2/*.c")
 # 3. 将源文件添加到可执行文件
@@ -52,12 +52,13 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${U8G2_SOURCES})
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
-    Core/Src/STM32_U8G2.c
-    Core/Src/ux_move.c
-    Core/Src/Key.c
-    Core/Src/menu.c
-    Core/Src/popup.c
-    Core/Src/splash.c
+    Core/UI/Src/stm32_u8g2.c
+    Core/UI/Src/ux_move.c
+    Core/UI/Src/Key.c
+    Core/UI/Src/menu.c
+    Core/UI/Src/popup.c
+    Core/UI/Src/splash.c
+    Core/UI/Src/app_ui.c
 )
 
 # Add include paths

@@ -1,12 +1,9 @@
 #include "menu.h"
+#include "ui_timing.h"
 
 #define BOX_PAD_X    5
 #define BOX_PAD_Y    1
 #define BOX_RADIUS   2
-
-#define BAR_ANIM_MS      200
-#define SCROLL_ANIM_MS   350
-#define TRANS_MS         800
 
 #define VISIBLE_TOP    MENU_TITLE_HEIGHT
 #define VISIBLE_BOTTOM (64 - MENU_LINE_HEIGHT)

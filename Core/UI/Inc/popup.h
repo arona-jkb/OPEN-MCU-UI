@@ -41,16 +41,16 @@ typedef struct {
     int16_t     min;
     int16_t     max;
     int16_t     step;
-} popup_num_cfg_t;
+} popup_value_cfg_t;
 
 typedef struct {
     popup_state_e  state;
-    popup_num_cfg_t cfg;
+    popup_value_cfg_t cfg;
     anim_ctrl_t    slide;
-} popup_num_t;
+} popup_value_t;
 
-void popup_num_init(popup_num_t *p, popup_base_t *b);
-void popup_num_open(popup_num_t *p, const char *title, int16_t *value,
+void popup_value_init(popup_value_t *p, popup_base_t *b);
+void popup_value_open(popup_value_t *p, const char *title, int16_t *value,
                     int16_t min, int16_t max, int16_t step);
 
 /* ========== boolean-toggle popup ========== */
@@ -59,16 +59,16 @@ typedef struct {
     bool       *value;
     const char *text_on;
     const char *text_off;
-} popup_bool_cfg_t;
+} popup_toggle_cfg_t;
 
 typedef struct {
     popup_state_e    state;
-    popup_bool_cfg_t cfg;
+    popup_toggle_cfg_t cfg;
     anim_ctrl_t      slide;
-} popup_bool_t;
+} popup_toggle_t;
 
-void popup_bool_init(popup_bool_t *p, popup_base_t *b);
-void popup_bool_open(popup_bool_t *p, const char *title, bool *value,
+void popup_toggle_init(popup_toggle_t *p, popup_base_t *b);
+void popup_toggle_open(popup_toggle_t *p, const char *title, bool *value,
                      const char *text_on, const char *text_off);
 
 /* ========== toast notification popup ========== */
