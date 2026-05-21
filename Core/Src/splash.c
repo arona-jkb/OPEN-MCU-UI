@@ -88,8 +88,8 @@ void splash_render(const splash_t *s, u8g2_t *u8g2) {
         u8g2_DrawStr(u8g2, (128 - (int16_t)w1) / 2, y1, l1);
     }
 
-    /* line 2 — "OPEN MCU UI" */
-    u8g2_SetFont(u8g2, u8g2_font_helvB10_tr);
+    /* line 2 — "OPEN MCU UI" (italic) */
+    u8g2_SetFont(u8g2, u8g2_font_luBIS10_tr);
     const char *l2 = "OPEN MCU UI";
     u8g2_uint_t w2 = u8g2_GetStrWidth(u8g2, l2);
     int16_t y2 = s->line2.cur_y;
