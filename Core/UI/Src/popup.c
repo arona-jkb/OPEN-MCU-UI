@@ -194,7 +194,7 @@ static void popup_value_render(popup_value_t *p, u8g2_t *u8g2) {
  * ================================================================ */
 
 static void popup_toggle_update(popup_toggle_t *p, int8_t key);
-static void popup_toggle_render(const popup_toggle_t *p, u8g2_t *u8g2);
+static void popup_toggle_render(popup_toggle_t *p, u8g2_t *u8g2);
 
 static bool tgl_active(void *p)      { return ((popup_toggle_t *)p)->state != POPUP_IDLE; }
 static void tgl_update(void *p, int8_t key) { popup_toggle_update((popup_toggle_t *)p, key); }
@@ -203,6 +203,8 @@ static void tgl_render(void *p, u8g2_t *u8g2) { popup_toggle_render((popup_toggl
 void popup_toggle_init(popup_toggle_t *p, popup_base_t *b) {
     p->state = POPUP_IDLE;
     anim_init(&p->slide);
+    anim_init(&p->knob_x);
+    p->knob_target = -1;
     b->instance = p;
     b->active   = tgl_active;
     b->update   = tgl_update;
@@ -217,6 +219,7 @@ void popup_toggle_open(popup_toggle_t *p, const char *title, bool *value,
     p->cfg.text_on  = text_on;
     p->cfg.text_off = text_off;
     p->state        = POPUP_OPENING;
+    p->knob_target  = -1;               /* 下次 render 跳变到位 */
     anim_start(&p->slide, 0, POPUP_OFF, 0, POPUP_Y, POPUP_OPEN_MS, quad_ease_out);
 }
 
@@ -243,7 +246,7 @@ static void popup_toggle_update(popup_toggle_t *p, int8_t key) {
     }
 }
 
-static void popup_toggle_render(const popup_toggle_t *p, u8g2_t *u8g2) {
+static void popup_toggle_render(popup_toggle_t *p, u8g2_t *u8g2) {
     if (p->state == POPUP_IDLE) return;
     int16_t py = p->slide.cur_y;
     int16_t px = (128 - POPUP_W) / 2;
@@ -257,24 +260,38 @@ static void popup_toggle_render(const popup_toggle_t *p, u8g2_t *u8g2) {
     u8g2_uint_t tt_w = u8g2_GetStrWidth(u8g2, p->cfg.title);
     u8g2_DrawStr(u8g2, px + (POPUP_W - (int16_t)tt_w) / 2, py + 14, p->cfg.title);
 
-    /* 滑块开关 (直角矩形, 30x14 轨道 + 10x10 滑块) */
+    /* 滑块开关 (直角矩形, 30x14 轨道 + 10x10 滑块, 动画驱动) */
     #define SW_W  30
     #define SW_H  14
     #define KNOB  10
 
     int16_t sw_x = px + (POPUP_W - SW_W) / 2;
     int16_t sw_y = py + 22;
+    int16_t knob_off = sw_x + 2;             /* OFF 位置 */
+    int16_t knob_on  = sw_x + SW_W - 2 - KNOB; /* ON 位置 */
+    int16_t targ = *p->cfg.value ? knob_on : knob_off;
+
+    /* 目标变化时启动动画 */
+    if (targ != p->knob_target) {
+        int16_t start_x = p->knob_x.cur_x;
+        if (p->knob_target < 0) start_x = targ;  /* 首次跳转 */
+        anim_start(&p->knob_x, start_x, 0, targ, 0,
+                   BAR_ANIM_MS, quad_ease_out);
+        p->knob_target = targ;
+    }
+
+    int16_t kx = p->knob_x.cur_x;             /* 当前动画 X */
 
     u8g2_SetDrawColor(u8g2, 1);
-    u8g2_DrawFrame(u8g2, sw_x, sw_y, SW_W, SW_H);       /* 轨道外框 */
-    if (*p->cfg.value) {
-        /* ON: 左侧填充条(距框 2 px) + 右侧白色滑块, 中间 2 px 黑缝 */
-        u8g2_DrawBox(u8g2, sw_x + 2, sw_y + 3, 14, 8);
-        u8g2_DrawBox(u8g2, sw_x + 18, sw_y + 2, KNOB, KNOB);
-    } else {
-        /* OFF: 左侧白色滑块 */
-        u8g2_DrawBox(u8g2, sw_x + 2, sw_y + 2, KNOB, KNOB);
+    u8g2_DrawFrame(u8g2, sw_x, sw_y, SW_W, SW_H);   /* 轨道外框 */
+
+    /* 填充条: 从轨道左内边延伸到拨杆左侧, 留 2 px 黑缝 */
+    int16_t fill_w = kx - sw_x - 4;           /* sw_x+2 到 kx, 中间 2px 缝 */
+    if (fill_w > 0) {
+        u8g2_DrawBox(u8g2, sw_x + 2, sw_y + 3, fill_w, 8);
     }
+    /* 拨杆 */
+    u8g2_DrawBox(u8g2, kx, sw_y + 2, KNOB, KNOB);
 
     #undef SW_W
     #undef SW_H

@@ -72,6 +72,8 @@ typedef struct {
     popup_state_e      state;
     popup_toggle_cfg_t cfg;
     anim_ctrl_t        slide;
+    anim_ctrl_t        knob_x;            /* 拨杆 X 坐标动画 */
+    int16_t            knob_target;       /* 拨杆目标 X */
 } popup_toggle_t;
 
 void popup_toggle_init(popup_toggle_t *p, popup_base_t *b);
