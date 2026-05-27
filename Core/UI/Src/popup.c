@@ -96,7 +96,8 @@ void popup_value_open(popup_value_t *p, const char *title, int16_t *value,
     p->cfg.max   = max;
     p->cfg.step  = step;
     p->state     = POPUP_OPENING;
-    p->bar_target = -1;                  /* 下次 render 首次计算时跳变到位 */
+    p->bar_target = -1;
+    p->saved      = *value;              /* 保存原始值, Key4 取消时还原 */
     anim_start(&p->slide, 0, POPUP_OFF, 0, POPUP_Y, POPUP_OPEN_MS, quad_ease_out);
 }
 
@@ -113,7 +114,14 @@ static void popup_value_update(popup_value_t *p, int8_t key) {
         } else if (key == 2) {           /* 下键: -step, 下限钳位 */
             *p->cfg.value -= p->cfg.step;
             if (*p->cfg.value < p->cfg.min) *p->cfg.value = p->cfg.min;
-        } else if (key == 3 || key == 4) {
+        } else if (key == 3) {
+            /* 确认 — 保留修改 */
+            anim_start(&p->slide, 0, p->slide.cur_y, 0, POPUP_OFF,
+                       POPUP_CLOSE_MS, quad_ease_out);
+            p->state = POPUP_CLOSING;
+        } else if (key == 4) {
+            /* 取消 — 还原原始值 */
+            *p->cfg.value = p->saved;
             anim_start(&p->slide, 0, p->slide.cur_y, 0, POPUP_OFF,
                        POPUP_CLOSE_MS, quad_ease_out);
             p->state = POPUP_CLOSING;
@@ -219,7 +227,8 @@ void popup_toggle_open(popup_toggle_t *p, const char *title, bool *value,
     p->cfg.text_on  = text_on;
     p->cfg.text_off = text_off;
     p->state        = POPUP_OPENING;
-    p->knob_target  = -1;               /* 下次 render 跳变到位 */
+    p->knob_target  = -1;
+    p->saved        = *value;           /* 保存原始值, Key4 取消时还原 */
     anim_start(&p->slide, 0, POPUP_OFF, 0, POPUP_Y, POPUP_OPEN_MS, quad_ease_out);
 }
 
@@ -232,7 +241,14 @@ static void popup_toggle_update(popup_toggle_t *p, int8_t key) {
     case POPUP_ACTIVE:
         if (key == 1 || key == 2) {      /* 上下键均翻转 */
             *p->cfg.value = !*p->cfg.value;
-        } else if (key == 3 || key == 4) {
+        } else if (key == 3) {
+            /* 确认 — 保留修改 */
+            anim_start(&p->slide, 0, p->slide.cur_y, 0, POPUP_OFF,
+                       POPUP_CLOSE_MS, quad_ease_out);
+            p->state = POPUP_CLOSING;
+        } else if (key == 4) {
+            /* 取消 — 还原原始值 */
+            *p->cfg.value = p->saved;
             anim_start(&p->slide, 0, p->slide.cur_y, 0, POPUP_OFF,
                        POPUP_CLOSE_MS, quad_ease_out);
             p->state = POPUP_CLOSING;

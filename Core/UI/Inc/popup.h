@@ -53,6 +53,7 @@ typedef struct {
     anim_ctrl_t       slide;              /* 滑入/滑出动画 */
     anim_ctrl_t       bar_anim;           /* 进度条填充宽度动画 */
     int16_t           bar_target;         /* 进度条目标填充宽度 */
+    int16_t           saved;              /* 打开时的原始值 (Key4 取消时还原) */
 } popup_value_t;
 
 void popup_value_init(popup_value_t *p, popup_base_t *b);
@@ -74,6 +75,7 @@ typedef struct {
     anim_ctrl_t        slide;
     anim_ctrl_t        knob_x;            /* 拨杆 X 坐标动画 */
     int16_t            knob_target;       /* 拨杆目标 X */
+    bool               saved;             /* 打开时的原始值 (Key4 取消时还原) */
 } popup_toggle_t;
 
 void popup_toggle_init(popup_toggle_t *p, popup_base_t *b);
