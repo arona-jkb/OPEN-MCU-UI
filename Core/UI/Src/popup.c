@@ -70,7 +70,7 @@ void popup_mgr_render(u8g2_t *u8g2) {
 
 /* 管理器回调包装 — 类型转换 + 调用静态函数 */
 static void popup_value_update(popup_value_t *p, int8_t key);
-static void popup_value_render(const popup_value_t *p, u8g2_t *u8g2);
+static void popup_value_render(popup_value_t *p, u8g2_t *u8g2);
 
 static bool val_active(void *p)       { return ((popup_value_t *)p)->state != POPUP_IDLE; }
 static void val_update(void *p, int8_t key) { popup_value_update((popup_value_t *)p, key); }
@@ -79,6 +79,8 @@ static void val_render(void *p, u8g2_t *u8g2) { popup_value_render((popup_value_
 void popup_value_init(popup_value_t *p, popup_base_t *b) {
     p->state = POPUP_IDLE;
     anim_init(&p->slide);
+    anim_init(&p->bar_anim);
+    p->bar_target = -1;
     b->instance = p;
     b->active   = val_active;
     b->update   = val_update;
@@ -94,6 +96,7 @@ void popup_value_open(popup_value_t *p, const char *title, int16_t *value,
     p->cfg.max   = max;
     p->cfg.step  = step;
     p->state     = POPUP_OPENING;
+    p->bar_target = -1;                  /* 下次 render 首次计算时跳变到位 */
     anim_start(&p->slide, 0, POPUP_OFF, 0, POPUP_Y, POPUP_OPEN_MS, quad_ease_out);
 }
 
@@ -124,7 +127,7 @@ static void popup_value_update(popup_value_t *p, int8_t key) {
     }
 }
 
-static void popup_value_render(const popup_value_t *p, u8g2_t *u8g2) {
+static void popup_value_render(popup_value_t *p, u8g2_t *u8g2) {
     if (p->state == POPUP_IDLE) return;
     int16_t py = p->slide.cur_y;
     int16_t px = (128 - POPUP_W) / 2;
@@ -151,12 +154,24 @@ static void popup_value_render(const popup_value_t *p, u8g2_t *u8g2) {
     u8g2_SetDrawColor(u8g2, 1);
     u8g2_DrawFrame(u8g2, bar_x, bar_y, bar_w, bar_h);
 
+    /* 进度条填充 — 动画驱动 */
     int16_t range = p->cfg.max - p->cfg.min;
     if (range > 0) {
-        int16_t max_fill = bar_w - 4;     /* 左右各缩 2 px */
-        int16_t fill_w = (int16_t)((int32_t)(*p->cfg.value - p->cfg.min)
-                                   * max_fill / range);
-        if (fill_w > max_fill) fill_w = max_fill;
+        int16_t max_fill = bar_w - 4;
+        int16_t targ = (int16_t)((int32_t)(*p->cfg.value - p->cfg.min)
+                                 * max_fill / range);
+        if (targ > max_fill) targ = max_fill;
+
+        /* 首次或目标变化时启动动画 */
+        if (targ != p->bar_target) {
+            int16_t start_w = p->bar_anim.cur_x;
+            if (p->bar_target < 0) start_w = targ;   /* 首次跳转到位 */
+            anim_start(&p->bar_anim, start_w, 0, targ, 0,
+                       BAR_ANIM_MS, quad_ease_out);
+            p->bar_target = targ;
+        }
+
+        int16_t fill_w = p->bar_anim.cur_x;
         if (fill_w > 0)
             u8g2_DrawBox(u8g2, bar_x + 2, bar_y + 2, fill_w, bar_h - 4);
     }

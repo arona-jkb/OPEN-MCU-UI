@@ -51,6 +51,8 @@ typedef struct {
     popup_state_e     state;
     popup_value_cfg_t cfg;
     anim_ctrl_t       slide;              /* 滑入/滑出动画 */
+    anim_ctrl_t       bar_anim;           /* 进度条填充宽度动画 */
+    int16_t           bar_target;         /* 进度条目标填充宽度 */
 } popup_value_t;
 
 void popup_value_init(popup_value_t *p, popup_base_t *b);
