@@ -11,7 +11,7 @@
 /* ---- 菜单 ---- */
 #define BAR_ANIM_MS      200              /* 选择条移动/变形动画     */
 #define SCROLL_ANIM_MS   350              /* 菜单文字边界滚动动画    */
-#define TRANS_MS         800              /* 页面切换过渡动画        */
+#define TRANS_MS         1200             /* 页面切换过渡动画 (两阶段各 600ms) */
 
 /* ---- 弹窗 ---- */
 #define POPUP_OPEN_MS    300              /* 弹窗滑入时长            */

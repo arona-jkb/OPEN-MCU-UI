@@ -9,6 +9,7 @@
 /* 菜单项行高与标题栏高度(像素) */
 #define MENU_LINE_HEIGHT  13
 #define MENU_TITLE_HEIGHT  12
+#define MENU_MAX_ITEMS      8              /* 单页最大菜单项数 (过渡动画槽位) */
 
 /* ---------- 数据定义 ---------- */
 
@@ -30,9 +31,9 @@ typedef struct menu_page {
 /* ---------- 页面切换动画 ---------- */
 
 typedef enum {
-    TRANS_NONE,                           /* 无切换          */
-    TRANS_ENTER,                          /* 进入子菜单      */
-    TRANS_BACK,                           /* 返回上级菜单    */
+    TRANS_NONE,                           /* 无切换            */
+    TRANS_OLD_OUT,                        /* 旧页退出中        */
+    TRANS_NEW_IN,                         /* 新页进入中        */
 } menu_trans_e;
 
 /* ---------- 运行时状态 ---------- */
@@ -48,10 +49,14 @@ typedef struct {
     /* 右侧滚动进度条 */
     anim_ctrl_t prog_anim;                /* 进度条高度动画        */
     int16_t     prog_target;              /* 进度条目标高度        */
-    /* 页面切换 */
-    menu_trans_e       trans;             /* 当前切换状态          */
-    const menu_page_t *trans_old;         /* 切换前的旧页面        */
-    anim_ctrl_t        trans_anim;        /* 切换进度 (0→100)     */
+    /* 页面切换 — 每项独立动画 (同时结束, 距离越远速度越快) */
+    menu_trans_e       trans;
+    const menu_page_t *trans_old;
+    uint8_t            trans_old_sel;     /* 旧页被选中项索引        */
+    anim_ctrl_t        title_old;         /* 旧标题栏 Y 动画        */
+    anim_ctrl_t        title_new;         /* 新标题栏 Y 动画        */
+    anim_ctrl_t        items_old[MENU_MAX_ITEMS]; /* 旧页每项 Y    */
+    anim_ctrl_t        items_new[MENU_MAX_ITEMS]; /* 新页每项 Y    */
 } menu_state_t;
 
 /* ---------- API ---------- */

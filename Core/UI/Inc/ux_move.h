@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #ifndef MAX_ANIM_NUM
-#define MAX_ANIM_NUM  10   // 根据单片机 RAM 设置，一般 8~16 够用
+#define MAX_ANIM_NUM  25   /* 过渡动画需要较多并发动画槽位 */
 #endif
 
 #include "main.h"
