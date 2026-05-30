@@ -63,62 +63,69 @@ static void my_custom_render(u8g2_t *u8g2, uint8_t id);
 static int16_t demo_brightness = 50;
 static bool    demo_power = true;
 
-/* --- submenu pages --- */
-static const menu_item_t settings_items[] = {
-    {"Brightness Adjustment Level", brightness_action, NULL},
-    {"Power Save Mode Config", power_action,      NULL},
-    {"Reset",      reset_action,      NULL},
+/* ---- 24x24 全白测试图标 (共用同一份位图数据) ---- */
+#define ICON_W  24
+#define ICON_H  24
+
+static const uint8_t icon_white_bits[] U8X8_PROGMEM = {
+    0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF,
+    0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF,
+    0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF,
+    0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF,
+    0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF,
+    0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF,
 };
 
-static menu_page_t settings_page = {
-    .title  = "Settings",
-    .items  = settings_items,
-    .count  = sizeof(settings_items) / sizeof(settings_items[0]),
-    .parent = NULL,
-};
+/* ---- 页面前向声明 (供 parent 指针交叉引用) ---- */
+static menu_page_t settings_page;
+static menu_page_t display_page;
+static menu_page_t about_page;
+static menu_page_t icon_page;
+static menu_page_t root_page;
 
-static const menu_item_t display_items[] = {
-    {"Flip Display 180 Degrees", NULL, NULL},
-    {"Invert Display Color Mode",   NULL, NULL},
-};
+/* ---- 子菜单页 (使用宏, parent 直接写入) ---- */
+static menu_page_t settings_page =
+    MENU_PAGE_TEXT("Settings", &root_page,
+        { "Brightness Adjustment Level", {0}, brightness_action, NULL },
+        { "Power Save Mode Config",      {0}, power_action,      NULL },
+        { "Reset",                       {0}, reset_action,      NULL },
+    );
 
-static menu_page_t display_page = {
-    .title  = "Display",
-    .items  = display_items,
-    .count  = sizeof(display_items) / sizeof(display_items[0]),
-    .parent = NULL,
-};
+static menu_page_t display_page =
+    MENU_PAGE_TEXT("Display", &root_page,
+        { "Flip Display 180 Degrees",    {0}, NULL, NULL },
+        { "Invert Display Color Mode",   {0}, NULL, NULL },
+    );
 
-static const menu_item_t about_items[] = {
-    {"STM32F103 GUI Demo Project v3.0", NULL, NULL},
-    {"u8g2 Library + SSD1306 OLED Display", NULL, NULL},
-    {"Build Date: 2026-05-30",  NULL, NULL},
-};
+static menu_page_t about_page =
+    MENU_PAGE_TEXT("About", &root_page,
+        { "STM32F103 GUI Demo Project v3.0",          {0}, NULL, NULL },
+        { "u8g2 Library + SSD1306 OLED Display",      {0}, NULL, NULL },
+        { "Build Date: 2026-05-30",                   {0}, NULL, NULL },
+    );
 
-static menu_page_t about_page = {
-    .title  = "About",
-    .items  = about_items,
-    .count  = sizeof(about_items) / sizeof(about_items[0]),
-    .parent = NULL,
-};
+/* ---- 图标菜单页 (水平排列, 全白测试位图) ---- */
+static menu_page_t icon_page =
+    MENU_PAGE_ICON("Icon Menu", &root_page,
+        { "Home",     {icon_white_bits, ICON_W, ICON_H}, NULL, NULL },
+        { "Search",   {icon_white_bits, ICON_W, ICON_H}, NULL, NULL },
+        { "Settings", {icon_white_bits, ICON_W, ICON_H}, NULL, NULL },
+        { "Tools",    {icon_white_bits, ICON_W, ICON_H}, NULL, NULL },
+        { "About",    {icon_white_bits, ICON_W, ICON_H}, NULL, NULL },
+    );
 
-/* --- root menu --- */
-static menu_item_t root_items[] = {
-    {"Custom Screen 1 - Long Name Test", custom_screen1_action, NULL},
-    {"Custom Screen 2", custom_screen2_action, NULL},
-    {"Test Animation Effects",  test_action,           NULL},
-    {"Show System Information Panel",       show_info_action,      NULL},
-    {"Settings",       NULL,                 &settings_page},
-    {"Display",        NULL,                 &display_page},
-    {"About",          NULL,                 &about_page},
-};
-
-static menu_page_t root_page = {
-    .title  = "Main Menu",
-    .items  = root_items,
-    .count  = sizeof(root_items) / sizeof(root_items[0]),
-    .parent = NULL,
-};
+/* ---- 根菜单 ---- */
+static menu_page_t root_page =
+    MENU_PAGE_TEXT("Main Menu", NULL,
+        { "Custom Screen 1 - Long Name Test", {0}, custom_screen1_action, NULL },
+        { "Custom Screen 2",                  {0}, custom_screen2_action, NULL },
+        { "Test Animation Effects",           {0}, test_action,           NULL },
+        { "Show System Information Panel",    {0}, show_info_action,      NULL },
+        { "Icon Menu",                        {0}, NULL,                 &icon_page },
+        { "Settings",                         {0}, NULL,                 &settings_page },
+        { "Display",                          {0}, NULL,                 &display_page },
+        { "About",                            {0}, NULL,                 &about_page },
+    );
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -203,11 +210,6 @@ int main(void)
   u8g2_t u8g2;
   MD_OLED_RST_Set();
   u8g2Init(&u8g2);
-
-  /* wire parent pointers */
-  settings_page.parent = &root_page;
-  display_page.parent  = &root_page;
-  about_page.parent    = &root_page;
 
   app_ui_init(&u8g2, &root_page);
   app_ui_set_custom_render(my_custom_render);

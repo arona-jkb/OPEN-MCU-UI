@@ -19,6 +19,7 @@
 #define TEXT_START_X   (4 + BOX_PAD_X)    /* 菜单文字起始 X 坐标 = 9                    */
 #define TEXT_MAX_END   (2 + BAR_MAX_W - BOX_PAD_X) /* 文字可见右边界 = 119           */
 #define TEXT_VISIBLE_W (TEXT_MAX_END - TEXT_START_X) /* 可见文字宽度 = 110            */
+#define ICON_GAP      8                     /* 图标之间水平间距 (像素) */
 
 #define VISIBLE_TOP    MENU_TITLE_HEIGHT
 #define VISIBLE_BOTTOM (64 - MENU_LINE_HEIGHT)
@@ -69,6 +70,12 @@ void menu_init(menu_state_t *state, const menu_page_t *root) {
     anim_init(&state->text_scroll_anim);
     anim_set_position(&state->text_scroll_anim, 0, 0);
     state->text_scroll_target = -1;
+    anim_init(&state->icon_frame_anim);
+    anim_set_position(&state->icon_frame_anim, 0, 0);
+    state->icon_frame_target = -1;
+    anim_init(&state->icon_scroll_anim);
+    anim_set_position(&state->icon_scroll_anim, 0, 0);
+    state->icon_scroll_target = -1;
     anim_init(&state->bar_anim);
     state->bar_target_y = -1;
     state->bar_target_w = -1;
@@ -103,6 +110,8 @@ void menu_update(menu_state_t *state) {
             state->bar_target_y = -1;
             state->bar_target_w = -1;
             state->text_scroll_target = -1;
+            state->icon_frame_target = -1;
+            state->icon_scroll_target = -1;
             state->prog_target  = -1;
         }
     }
@@ -159,6 +168,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
         int16_t ascent = u8g2_GetAscent(u8g2);
 
         /* 新页项 */
+        u8g2_SetFont(u8g2, u8g2_font_helvB10_tr);
         for (uint8_t i = 0; i < newp->count && i < MENU_MAX_ITEMS; i++) {
             int16_t y = state->items_new[i].cur_y;
             if (y < 2 || y > 65) continue;
@@ -191,6 +201,114 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
         int16_t scroll = state->scroll_anim.cur_y;
         const menu_page_t *page = state->current;
         uint8_t sel = state->selected;
+
+        /* ================================================================
+         *  图标菜单 (MENU_ICON): 水平排列图标 + 下方文字
+         * ================================================================ */
+        if (page->style == MENU_ICON) {
+            uint8_t n = page->count;
+            if (n == 0) goto draw_title;
+
+            const menu_item_t *sel_item = &page->items[sel];
+            uint8_t iw = sel_item->icon.w;
+            uint8_t ih = sel_item->icon.h;
+            int16_t frame_pad  = 2;
+            int16_t frame_half = (int16_t)iw / 2 + frame_pad;  /* 框半宽(含内边距) */
+
+            /* 槽位宽度 */
+            int16_t total_gap = (int16_t)(n - 1) * ICON_GAP;
+            int16_t slot_w = (TEXT_VISIBLE_W - total_gap) / (int16_t)n;
+            if (slot_w < (int16_t)iw + frame_pad * 2) slot_w = (int16_t)iw + frame_pad * 2;
+
+            int16_t icon_y = VISIBLE_TOP + 7;   /* 图标区域顶部 Y, 为进度条留空间 */
+
+            /* ---- 1.  水平滚动目标 ---- */
+            int16_t sel_abs_cx = TEXT_START_X + (int16_t)sel * (slot_w + ICON_GAP) + slot_w / 2;
+            int16_t cur_s      = state->icon_scroll_anim.cur_x;
+            int16_t targ_s     = cur_s;
+
+            if (sel_abs_cx - frame_half - cur_s < TEXT_START_X)
+                targ_s = cur_s - (TEXT_START_X - (sel_abs_cx - frame_half - cur_s));
+            if (sel_abs_cx + frame_half - cur_s > TEXT_MAX_END)
+                targ_s = cur_s + ((sel_abs_cx + frame_half - cur_s) - TEXT_MAX_END);
+            if (targ_s < 0) targ_s = 0;
+
+            if (targ_s != state->icon_scroll_target) {
+                int16_t start_s = cur_s;
+                if (state->icon_scroll_target < 0) start_s = targ_s;
+                anim_start(&state->icon_scroll_anim, start_s, 0,
+                           targ_s, 0, SCROLL_ANIM_MS, quad_ease_out);
+                state->icon_scroll_target = targ_s;
+            }
+            int16_t scroll_offs = state->icon_scroll_anim.cur_x;
+
+            /* ---- 2.  选中框目标 (用 scroll 目标值, 独立动画) ---- */
+            {
+                int16_t frame_final = sel_abs_cx - targ_s - (int16_t)iw / 2 - frame_pad;
+                if (frame_final < TEXT_START_X)
+                    frame_final = TEXT_START_X;
+                if (frame_final + (int16_t)iw + frame_pad * 2 > TEXT_MAX_END)
+                    frame_final = TEXT_MAX_END - (int16_t)iw - frame_pad * 2;
+
+                if (frame_final != state->icon_frame_target) {
+                    int16_t start_x = state->icon_frame_anim.cur_x;
+                    if (state->icon_frame_target < 0) start_x = frame_final;
+                    anim_start(&state->icon_frame_anim, start_x, 0,
+                               frame_final, 0, BAR_ANIM_MS, quad_ease_out);
+                    state->icon_frame_target = frame_final;
+                }
+            }
+
+            /* ---- pass 1: 所有图标统一按 scroll 偏移绘制 (颜色 1) ---- */
+            u8g2_SetDrawColor(u8g2, 1);
+            for (uint8_t i = 0; i < n; i++) {
+                const menu_item_t *item = &page->items[i];
+                int16_t abs_cx = TEXT_START_X + (int16_t)i * (slot_w + ICON_GAP) + slot_w / 2;
+                int16_t ix = abs_cx - scroll_offs - (int16_t)item->icon.w / 2;
+                if (ix + (int16_t)item->icon.w < TEXT_START_X || ix > TEXT_MAX_END) continue;
+                u8g2_DrawXBMP(u8g2, (u8g2_uint_t)ix, (u8g2_uint_t)icon_y,
+                              item->icon.w, item->icon.h, item->icon.bitmap);
+            }
+
+            /* ---- pass 2: XOR 选中框 (颜色 2, 独立动画) ---- */
+            {
+                int16_t frame_x = state->icon_frame_anim.cur_x;
+                int16_t frame_y = icon_y - frame_pad;
+                int16_t frame_w = (int16_t)iw + frame_pad * 2;
+                int16_t frame_h = (int16_t)ih + frame_pad * 2;
+                u8g2_SetDrawColor(u8g2, 2);
+                u8g2_DrawFrame(u8g2, (u8g2_uint_t)frame_x, (u8g2_uint_t)frame_y,
+                               (u8g2_uint_t)frame_w, (u8g2_uint_t)frame_h);
+            }
+
+            /* ---- 文字标签: 屏幕下方居中 ---- */
+            {
+                u8g2_SetDrawColor(u8g2, 1);
+                u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
+                u8g2_uint_t tw = u8g2_GetStrWidth(u8g2, sel_item->name);
+                int16_t tx = (int16_t)(128 - tw) / 2;
+                if (tx < 0) tx = 0;
+                u8g2_DrawStr(u8g2, (u8g2_uint_t)tx, 60, sel_item->name);
+            }
+
+            /* ---- 标题栏进度条: 标题分割线变水平进度条, 3px 高 ---- */
+            if (n > 1) {
+                int16_t targ = (int16_t)(sel + 1) * 124 / (int16_t)n;
+                if (targ != state->prog_target) {
+                    int16_t start_w = state->prog_anim.cur_x;
+                    if (state->prog_target < 0) start_w = targ;
+                    anim_start(&state->prog_anim, start_w, 0,
+                               targ, 0, BAR_ANIM_MS, quad_ease_out);
+                    state->prog_target = targ;
+                }
+            }
+
+            goto draw_title;
+        }
+
+        /* ================================================================
+         *  文字菜单 (MENU_TEXT): 原有垂直文字逻辑
+         * ================================================================ */
 
         u8g2_SetFont(u8g2, u8g2_font_helvB10_tr);
         int16_t ascent = u8g2_GetAscent(u8g2);
@@ -287,12 +405,19 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
         }
 
         /* ---- title bar (black fill, white text + separator) ---- */
+    draw_title:
         u8g2_SetDrawColor(u8g2, 0);
         u8g2_DrawBox(u8g2, 0, 0, 128, VISIBLE_TOP);
         u8g2_SetDrawColor(u8g2, 1);
         u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
         u8g2_DrawStr(u8g2, 2, VISIBLE_TOP - 3, page->title);
-        u8g2_DrawHLine(u8g2, 0, VISIBLE_TOP - 1, 128);
+        if (page->style == MENU_ICON && page->count > 1) {
+            /* 标题分割线 → 水平进度条 (3px 高) */
+            int16_t pw = state->prog_anim.cur_x;
+            if (pw > 0) u8g2_DrawBox(u8g2, 0, VISIBLE_TOP, (u8g2_uint_t)pw, 3);
+        } else {
+            u8g2_DrawHLine(u8g2, 0, VISIBLE_TOP - 1, 128);
+        }
     }
 }
 
@@ -300,6 +425,14 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
 
 bool menu_key_up(menu_state_t *state) {
     if (state->trans != TRANS_NONE) return false;
+    if (state->current->style == MENU_ICON) {
+        /* 图标菜单: 上 = 左移, 首项不循环 */
+        if (state->selected > 0) {
+            state->selected--;
+            return true;
+        }
+        return false;
+    }
     if (state->selected > 0) {
         state->selected--;
         start_scroll(state);
@@ -310,6 +443,15 @@ bool menu_key_up(menu_state_t *state) {
 
 bool menu_key_down(menu_state_t *state) {
     if (state->trans != TRANS_NONE) return false;
+    if (state->current->style == MENU_ICON) {
+        /* 图标菜单: 下 = 右移, 末项不循环 */
+        uint8_t n = state->current->count;
+        if (n > 0 && state->selected + 1 < n) {
+            state->selected++;
+            return true;
+        }
+        return false;
+    }
     if (state->selected + 1 < state->current->count) {
         state->selected++;
         start_scroll(state);
