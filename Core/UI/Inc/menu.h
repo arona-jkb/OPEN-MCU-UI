@@ -44,24 +44,6 @@ typedef struct menu_page {
 } menu_page_t;
 
 /* ---- 菜单页定义宏 (消除样板代码) ---- */
-
-/*
- * 使用示例:
- *
- *   // 纯文本菜单
- *   static menu_page_t settings_page =
- *       MENU_PAGE_TEXT("Settings", &root_page,
- *           { "Brightness", {0}, brightness_action, NULL },
- *           { "Power Save", {0}, power_action,      NULL },
- *       );
- *
- *   // 图标菜单
- *   static menu_page_t icon_page =
- *       MENU_PAGE_ICON("Tools", &root_page,
- *           { "Home",  {icon_home_bits, 24, 24}, NULL, &sub_page },
- *           { "Star",  {icon_star_bits, 24, 24}, my_cb, NULL },
- *       );
- */
 #define MENU_PAGE_TEXT(pg_title, parent_ptr, ...)                              \
     { .title = (pg_title), .style = MENU_TEXT, .parent = (parent_ptr),         \
       .items = (const menu_item_t[]){ __VA_ARGS__ },                        \
@@ -98,9 +80,15 @@ typedef struct {
     int16_t     icon_scroll_target;       /* 滚动目标 X 偏移       */
     anim_ctrl_t icon_frame_anim;          /* 选中框 X 位移动画     */
     int16_t     icon_frame_target;        /* 选中框目标 X 坐标     */
-    /* 右侧滚动进度条 */
-    anim_ctrl_t prog_anim;                /* 进度条高度动画        */
-    int16_t     prog_target;              /* 进度条目标高度        */
+    /* 图标菜单: 入场过渡动画 */
+    anim_ctrl_t icon_trans_title_y;       /* 标题栏 Y 入场动画     */
+    anim_ctrl_t icon_trans_label_y;       /* 标签 Y 入场动画       */
+    anim_ctrl_t icon_trans_item_x[MENU_MAX_ITEMS]; /* 图标 X 飞入  */
+    uint8_t      icon_trans_step;         /* 下个待启动的图标序号   */
+    uint32_t     icon_trans_t0;           /* 入场开始时刻 (tick)   */
+    /* 进度条 */
+    anim_ctrl_t prog_anim;                /* 进度条动画            */
+    int16_t     prog_target;              /* 进度条目标值          */
     /* 页面切换 — 每项独立动画 (同时结束, 距离越远速度越快) */
     menu_trans_e       trans;
     const menu_page_t *trans_old;
