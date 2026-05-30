@@ -13,7 +13,12 @@
 
 #define BOX_PAD_X    5                    /* 选择框左右内边距      */
 #define BOX_PAD_Y    1                    /* 选择框上下内边距      */
-#define BOX_RADIUS   2                    /* 选择框圆角半径        */
+#define BOX_RADIUS   1                   /* 选择框圆角半径        */
+
+#define BAR_MAX_W      122               /* 选择条最大宽度: 比右侧进度条(x=125)小1px */
+#define TEXT_START_X   (4 + BOX_PAD_X)    /* 菜单文字起始 X 坐标 = 9                    */
+#define TEXT_MAX_END   (2 + BAR_MAX_W - BOX_PAD_X) /* 文字可见右边界 = 119           */
+#define TEXT_VISIBLE_W (TEXT_MAX_END - TEXT_START_X) /* 可见文字宽度 = 110            */
 
 #define VISIBLE_TOP    MENU_TITLE_HEIGHT
 #define VISIBLE_BOTTOM (64 - MENU_LINE_HEIGHT)
@@ -48,6 +53,11 @@ static void start_scroll(menu_state_t *state) {
                0, state->scroll_anim.cur_y,
                0, target,
                SCROLL_ANIM_MS, quad_ease_out);
+
+    /* 选中项变化时, 复位文字水平滚动 */
+    state->text_scroll_target = -1;
+    anim_stop(&state->text_scroll_anim);
+    anim_set_position(&state->text_scroll_anim, 0, 0);
 }
 
 void menu_init(menu_state_t *state, const menu_page_t *root) {
@@ -56,6 +66,9 @@ void menu_init(menu_state_t *state, const menu_page_t *root) {
     state->scroll_target = 0;
     anim_init(&state->scroll_anim);
     anim_set_position(&state->scroll_anim, 0, 0);
+    anim_init(&state->text_scroll_anim);
+    anim_set_position(&state->text_scroll_anim, 0, 0);
+    state->text_scroll_target = -1;
     anim_init(&state->bar_anim);
     state->bar_target_y = -1;
     state->bar_target_w = -1;
@@ -89,6 +102,7 @@ void menu_update(menu_state_t *state) {
             state->scroll_target = 0;
             state->bar_target_y = -1;
             state->bar_target_w = -1;
+            state->text_scroll_target = -1;
             state->prog_target  = -1;
         }
     }
@@ -188,6 +202,9 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
         u8g2_uint_t str_w = u8g2_GetStrWidth(u8g2, page->items[sel].name);
         int16_t targ_box_w = (int16_t)str_w + BOX_PAD_X * 2;
 
+        /* 限制选择条最大宽度: 比右侧进度条(x=125)小1像素, 即右边界 ≤124 */
+        if (targ_box_w > BAR_MAX_W) targ_box_w = BAR_MAX_W;
+
         if (targ_box_y < VISIBLE_TOP + 1)   targ_box_y = VISIBLE_TOP + 1;
         if (targ_box_y > 64 - box_h)        targ_box_y = 64 - box_h;
 
@@ -201,12 +218,42 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
             state->bar_target_w = targ_box_w;
         }
 
-        /* ---- pass 1: all items normal text ---- */
+        /* ---- 选中项文字水平滚动 (文字超出可见区域时, 线性插值向左滚动) ---- */
+        {
+            int16_t text_overflow = (int16_t)str_w - TEXT_VISIBLE_W;
+            if (text_overflow > 0) {
+                int16_t targ = text_overflow;
+                if (targ != state->text_scroll_target) {
+                    int16_t start_s = state->text_scroll_anim.cur_x;
+                    if (state->text_scroll_target < 0) start_s = 0;
+                    /* 动画时长与溢出量成比例: 每像素约12ms, 确保线性滚动速度均匀 */
+                    uint32_t dur = (uint32_t)text_overflow * 12;
+                    if (dur < SCROLL_ANIM_MS) dur = SCROLL_ANIM_MS;
+                    anim_start(&state->text_scroll_anim, start_s, 0,
+                               targ, 0, dur, linear_ease);
+                    state->text_scroll_target = targ;
+                }
+            } else {
+                /* 文字不溢出: 复位滚动偏移 */
+                if (state->text_scroll_target != 0) {
+                    int16_t start_s = state->text_scroll_anim.cur_x;
+                    uint32_t dur = (uint32_t)(start_s > 0 ? start_s * 8 : SCROLL_ANIM_MS / 2);
+                    anim_start(&state->text_scroll_anim, start_s, 0,
+                               0, 0, dur, linear_ease);
+                    state->text_scroll_target = 0;
+                }
+            }
+        }
+        int16_t text_scroll_offs = state->text_scroll_anim.cur_x;
+
+        /* ---- pass 1: all items normal text (选中项应用水平滚动偏移) ---- */
         for (uint8_t i = 0; i < page->count; i++) {
             int16_t y = VISIBLE_TOP + (int16_t)i * MENU_LINE_HEIGHT - scroll + ascent;
             if (y < VISIBLE_TOP || y > 65) continue;
             u8g2_SetDrawColor(u8g2, 1);
-            u8g2_DrawStr(u8g2, 4 + BOX_PAD_X, y, page->items[i].name);
+            int16_t tx = TEXT_START_X;
+            if (i == sel) tx -= text_scroll_offs;
+            u8g2_DrawStr(u8g2, tx, y, page->items[i].name);
         }
 
         /* ---- pass 2: XOR box at animated position ---- */
@@ -231,6 +278,9 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
             }
             int16_t h = state->prog_anim.cur_y;
             if (h > 0) {
+                /* 左侧 1px 黑色描边, 分隔索引条与菜单文字 */
+                u8g2_SetDrawColor(u8g2, 0);
+                u8g2_DrawBox(u8g2, 124, VISIBLE_TOP, 1, h);
                 u8g2_SetDrawColor(u8g2, 1);
                 u8g2_DrawBox(u8g2, 125, VISIBLE_TOP, 3, h);
             }

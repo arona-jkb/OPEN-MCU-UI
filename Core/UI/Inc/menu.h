@@ -46,6 +46,9 @@ typedef struct {
     anim_ctrl_t bar_anim;                 /* 选择条位移动画        */
     int16_t  bar_target_y;                /* 选择条目标 Y 坐标     */
     int16_t  bar_target_w;                /* 选择条目标宽度        */
+    /* 选中项文字水平滚动 (文字过长时) */
+    anim_ctrl_t text_scroll_anim;         /* 文字水平滚动动画      */
+    int16_t     text_scroll_target;       /* 文字滚动目标 X 偏移   */
     /* 右侧滚动进度条 */
     anim_ctrl_t prog_anim;                /* 进度条高度动画        */
     int16_t     prog_target;              /* 进度条目标高度        */

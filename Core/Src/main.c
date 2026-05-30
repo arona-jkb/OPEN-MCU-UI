@@ -65,8 +65,8 @@ static bool    demo_power = true;
 
 /* --- submenu pages --- */
 static const menu_item_t settings_items[] = {
-    {"Brightness", brightness_action, NULL},
-    {"Power Save", power_action,      NULL},
+    {"Brightness Adjustment Level", brightness_action, NULL},
+    {"Power Save Mode Config", power_action,      NULL},
     {"Reset",      reset_action,      NULL},
 };
 
@@ -78,8 +78,8 @@ static menu_page_t settings_page = {
 };
 
 static const menu_item_t display_items[] = {
-    {"Flip 180", NULL, NULL},
-    {"Invert",   NULL, NULL},
+    {"Flip Display 180 Degrees", NULL, NULL},
+    {"Invert Display Color Mode",   NULL, NULL},
 };
 
 static menu_page_t display_page = {
@@ -90,9 +90,9 @@ static menu_page_t display_page = {
 };
 
 static const menu_item_t about_items[] = {
-    {"STM32F103 GUI", NULL, NULL},
-    {"u8g2 + SSD1306", NULL, NULL},
-    {"v3.0  2026-05-20",  NULL, NULL},
+    {"STM32F103 GUI Demo Project v3.0", NULL, NULL},
+    {"u8g2 Library + SSD1306 OLED Display", NULL, NULL},
+    {"Build Date: 2026-05-30",  NULL, NULL},
 };
 
 static menu_page_t about_page = {
@@ -104,10 +104,10 @@ static menu_page_t about_page = {
 
 /* --- root menu --- */
 static menu_item_t root_items[] = {
-    {"Custom Screen 1", custom_screen1_action, NULL},
+    {"Custom Screen 1 - Long Name Test", custom_screen1_action, NULL},
     {"Custom Screen 2", custom_screen2_action, NULL},
-    {"Test Animation",  test_action,           NULL},
-    {"Show Info",       show_info_action,      NULL},
+    {"Test Animation Effects",  test_action,           NULL},
+    {"Show System Information Panel",       show_info_action,      NULL},
     {"Settings",       NULL,                 &settings_page},
     {"Display",        NULL,                 &display_page},
     {"About",          NULL,                 &about_page},
