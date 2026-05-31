@@ -21,6 +21,28 @@
 #define TEXT_MAX_END   (2 + BAR_MAX_W - BOX_PAD_X) /* 文字可见右边界 = 119           */
 #define TEXT_VISIBLE_W (TEXT_MAX_END - TEXT_START_X) /* 可见文字宽度 = 110            */
 #define ICON_GAP      8                     /* 图标之间水平间距 (像素) */
+#define ICON_FRAME_GAP 4                     /* 选中外框与图标间距       */
+#define ICON_BRACKET_LEN 6                   /* 直角拐角臂长            */
+#define ICON_BRACKET_THICK 2                 /* 拐角线条粗细 (像素)     */
+
+/* 绘制直角拐角选中框 (XOR 颜色2) */
+#define DRAW_ICON_BRACKETS(u8g2, fx, fy, fw, fh) do {                   \
+    int16_t _bx = (int16_t)(fx), _by = (int16_t)(fy);                   \
+    int16_t _bw = (int16_t)(fw), _bh = (int16_t)(fh);                   \
+    int16_t _bl = ICON_BRACKET_LEN, _bt = ICON_BRACKET_THICK;           \
+    /* 左上 横+竖 */                                                       \
+    u8g2_DrawBox(u8g2, _bx,              _by,              _bl, _bt);   \
+    u8g2_DrawBox(u8g2, _bx,              _by,              _bt, _bl);   \
+    /* 右上 横+竖 */                                                       \
+    u8g2_DrawBox(u8g2, _bx+_bw-_bl,      _by,              _bl, _bt);   \
+    u8g2_DrawBox(u8g2, _bx+_bw-_bt,      _by,              _bt, _bl);   \
+    /* 左下 横+竖 */                                                       \
+    u8g2_DrawBox(u8g2, _bx,              _by+_bh-_bt,      _bl, _bt);   \
+    u8g2_DrawBox(u8g2, _bx,              _by+_bh-_bl,      _bt, _bl);   \
+    /* 右下 横+竖 */                                                       \
+    u8g2_DrawBox(u8g2, _bx+_bw-_bl,      _by+_bh-_bt,      _bl, _bt);   \
+    u8g2_DrawBox(u8g2, _bx+_bw-_bt,      _by+_bh-_bl,      _bt, _bl);   \
+} while(0)
 
 /* 图标菜单入场动画参数 */
 #define ICON_TRANS_TITLE_MS 400            /* 标题栏入场时长         */
@@ -220,11 +242,11 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
             const menu_item_t *sel_item = &oldp->items[os];
             uint8_t iw = sel_item->icon.w;
             uint8_t ih = sel_item->icon.h;
-            int16_t frame_pad = 2;
+            int16_t frame_pad = ICON_FRAME_GAP;
             int16_t total_gap  = (int16_t)(n - 1) * ICON_GAP;
             int16_t slot_w     = (TEXT_VISIBLE_W - total_gap) / (int16_t)n;
             if (slot_w < (int16_t)iw + frame_pad * 2) slot_w = (int16_t)iw + frame_pad * 2;
-            int16_t icon_y     = VISIBLE_TOP + 7;
+            int16_t icon_y     = VISIBLE_TOP + 8;
 
             /* 标题栏 (动画 Y) */
             {
@@ -250,8 +272,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
                 int16_t frame_w = (int16_t)iw + (int16_t)frame_pad * 2;
                 int16_t frame_h = (int16_t)ih + (int16_t)frame_pad * 2;
                 u8g2_SetDrawColor(u8g2, 2);
-                u8g2_DrawFrame(u8g2, (u8g2_uint_t)frame_x, (u8g2_uint_t)frame_y,
-                               (u8g2_uint_t)frame_w, (u8g2_uint_t)frame_h);
+                DRAW_ICON_BRACKETS(u8g2, frame_x, frame_y, frame_w, frame_h);
 
                 u8g2_SetDrawColor(u8g2, 1);
                 for (int8_t i = (int8_t)(n - 1); i >= 0; i--) {
@@ -327,11 +348,11 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
             const menu_item_t *sel_item = &newp->items[0];  /* 入场时 sel=0 */
             uint8_t iw = sel_item->icon.w;
             uint8_t ih = sel_item->icon.h;
-            int16_t frame_pad = 2;
+            int16_t frame_pad = ICON_FRAME_GAP;
             int16_t total_gap  = (int16_t)(n - 1) * ICON_GAP;
             int16_t slot_w     = (TEXT_VISIBLE_W - total_gap) / (int16_t)n;
             if (slot_w < (int16_t)iw + frame_pad * 2) slot_w = (int16_t)iw + frame_pad * 2;
-            int16_t icon_y     = VISIBLE_TOP + 7;
+            int16_t icon_y     = VISIBLE_TOP + 8;
 
             /* ---- 标题栏 (黑底 + 居中标题, 动画 Y) ---- */
             {
@@ -363,8 +384,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
                     int16_t frame_w = (int16_t)iw + frame_pad * 2;
                     int16_t frame_h = (int16_t)ih + frame_pad * 2;
                     u8g2_SetDrawColor(u8g2, 2);
-                    u8g2_DrawFrame(u8g2, (u8g2_uint_t)frame_x, (u8g2_uint_t)frame_y,
-                                   (u8g2_uint_t)frame_w, (u8g2_uint_t)frame_h);
+                    DRAW_ICON_BRACKETS(u8g2, frame_x, frame_y, frame_w, frame_h);
                 }
 
                 /* 图标: 从末项到首项绘制 (首项在最上层) */
@@ -447,7 +467,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
             const menu_item_t *sel_item = &page->items[sel];
             uint8_t iw = sel_item->icon.w;
             uint8_t ih = sel_item->icon.h;
-            int16_t frame_pad  = 2;
+            int16_t frame_pad  = ICON_FRAME_GAP;
             int16_t frame_half = (int16_t)iw / 2 + frame_pad;
 
             /* 槽位宽度 */
@@ -455,7 +475,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
             int16_t slot_w = (TEXT_VISIBLE_W - total_gap) / (int16_t)n;
             if (slot_w < (int16_t)iw + frame_pad * 2) slot_w = (int16_t)iw + frame_pad * 2;
 
-            int16_t icon_y = VISIBLE_TOP + 7;
+            int16_t icon_y = VISIBLE_TOP + 8;
 
             /* ---- 1.  水平滚动目标 ---- */
             int16_t sel_abs_cx = TEXT_START_X + (int16_t)sel * (slot_w + ICON_GAP) + slot_w / 2;
@@ -505,15 +525,14 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
                               item->icon.w, item->icon.h, item->icon.bitmap);
             }
 
-            /* ---- pass 2: XOR 选中框 (颜色 2, 独立动画) ---- */
+            /* ---- pass 2: XOR 直角拐角选中框 (颜色 2) ---- */
             {
                 int16_t frame_x = state->icon_frame_anim.cur_x;
                 int16_t frame_y = icon_y - frame_pad;
                 int16_t frame_w = (int16_t)iw + frame_pad * 2;
                 int16_t frame_h = (int16_t)ih + frame_pad * 2;
                 u8g2_SetDrawColor(u8g2, 2);
-                u8g2_DrawFrame(u8g2, (u8g2_uint_t)frame_x, (u8g2_uint_t)frame_y,
-                               (u8g2_uint_t)frame_w, (u8g2_uint_t)frame_h);
+                DRAW_ICON_BRACKETS(u8g2, frame_x, frame_y, frame_w, frame_h);
             }
 
             /* ---- 文字标签: 屏幕下方居中 (阶段1:旧下沉 → 阶段2:新上浮) ---- */
@@ -816,7 +835,7 @@ static void icon_trans_start_exit(menu_state_t *state) {
     if (n == 0) return;
     const menu_item_t *sel_item = &oldp->items[os];
     uint8_t iw = sel_item->icon.w;
-    int16_t frame_pad = 2;
+    int16_t frame_pad = ICON_FRAME_GAP;
     int16_t total_gap = (int16_t)(n - 1) * ICON_GAP;
     int16_t slot_w    = (TEXT_VISIBLE_W - total_gap) / (int16_t)n;
     if (slot_w < (int16_t)iw + frame_pad * 2) slot_w = (int16_t)iw + frame_pad * 2;
@@ -872,7 +891,7 @@ static void icon_trans_start(menu_state_t *state) {
     if (n == 0) return;
     const menu_item_t *sel_item = &newp->items[0];
     uint8_t iw = sel_item->icon.w;
-    int16_t frame_pad = 2;
+    int16_t frame_pad = ICON_FRAME_GAP;
     int16_t total_gap = (int16_t)(n - 1) * ICON_GAP;
     int16_t slot_w    = (TEXT_VISIBLE_W - total_gap) / (int16_t)n;
     if (slot_w < (int16_t)iw + frame_pad * 2) slot_w = (int16_t)iw + frame_pad * 2;
