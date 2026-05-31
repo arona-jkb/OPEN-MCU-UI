@@ -7,7 +7,7 @@
 #include "ux_move.h"
 
 /* 菜单项行高与标题栏高度(像素) */
-#define MENU_LINE_HEIGHT  13
+#define MENU_LINE_HEIGHT  11
 #define MENU_TITLE_HEIGHT  12
 #define MENU_MAX_ITEMS      8              /* 单页最大菜单项数 (过渡动画槽位) */
 
@@ -86,6 +86,12 @@ typedef struct {
     anim_ctrl_t icon_trans_item_x[MENU_MAX_ITEMS]; /* 图标 X 飞入  */
     uint8_t      icon_trans_step;         /* 下个待启动的图标序号   */
     uint32_t     icon_trans_t0;           /* 入场开始时刻 (tick)   */
+    /* 图标菜单: 标签切换动画 */
+    anim_ctrl_t icon_label_old_y;         /* 阶段1:旧标签下沉 Y 动画 */
+    anim_ctrl_t icon_label_new_y;         /* 阶段2:新标签上浮 Y 动画 */
+    const char  *icon_label_old_name;     /* 旧标签文字              */
+    const char  *icon_label_new_name;     /* 新标签文字 (阶段2使用)  */
+    uint8_t      icon_label_phase;        /* 0=空闲 1=阶段1 2=阶段2 */
     /* 进度条 */
     anim_ctrl_t prog_anim;                /* 进度条动画            */
     int16_t     prog_target;              /* 进度条目标值          */

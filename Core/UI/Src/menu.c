@@ -97,6 +97,14 @@ void menu_init(menu_state_t *state, const menu_page_t *root) {
     }
     state->icon_trans_step = 0;
     state->icon_trans_t0   = 0;
+    /* 标签切换动画 */
+    anim_init(&state->icon_label_old_y);
+    anim_set_position(&state->icon_label_old_y, 0, 60);
+    anim_init(&state->icon_label_new_y);
+    anim_set_position(&state->icon_label_new_y, 0, 64);
+    state->icon_label_old_name = NULL;
+    state->icon_label_new_name = NULL;
+    state->icon_label_phase    = 0;
     anim_init(&state->bar_anim);
     state->bar_target_y = -1;
     state->bar_target_w = -1;
@@ -141,7 +149,7 @@ void menu_update(menu_state_t *state) {
         if (state->current->style == MENU_ICON)
             icon_trans_start(state);
         else
-            trans_start_new_text(state, 8);
+            trans_start_new_text(state, 7);
     } else if (state->trans == TRANS_NEW_IN) {
         if (state->current->style == MENU_ICON) {
             /* 图标入场: 所有图标飞入完成后结束过渡 */
@@ -161,6 +169,9 @@ void menu_update(menu_state_t *state) {
                     state->icon_frame_target = -1;
                     state->icon_scroll_target = -1;
                     state->prog_target  = -1;
+                    state->icon_label_old_name = NULL;
+                    state->icon_label_new_name = NULL;
+                    state->icon_label_phase    = 0;
                 }
             } else {
                 /* 空页: 等标题完成 */
@@ -254,7 +265,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
             {
                 int16_t label_y = state->icon_trans_label_y.cur_y;
                 u8g2_SetDrawColor(u8g2, 1);
-                u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
+                u8g2_SetFont(u8g2, u8g2_font_helvB08_tr);
                 u8g2_uint_t tw = u8g2_GetStrWidth(u8g2, sel_item->name);
                 int16_t tx = (int16_t)(128 - tw) / 2;
                 if (tx < 0) tx = 0;
@@ -266,7 +277,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
         int16_t ttl = VISIBLE_TOP;
 
         /* 旧页项 */
-        u8g2_SetFont(u8g2, u8g2_font_helvB10_tr);
+        u8g2_SetFont(u8g2, u8g2_font_helvB08_tr);
         for (uint8_t i = 0; i < oldp->count && i < MENU_MAX_ITEMS; i++) {
             int16_t y = state->items_old[i].cur_y;
             if (y < -10 || y > 65) continue;
@@ -286,7 +297,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
         }
 
         /* 旧页选择条 */
-        u8g2_SetFont(u8g2, u8g2_font_helvB10_tr);
+        u8g2_SetFont(u8g2, u8g2_font_helvB08_tr);
         if (oldp->count > 0) {
             uint8_t os = state->trans_old_sel;
             int16_t ascent2 = u8g2_GetAscent(u8g2);
@@ -375,7 +386,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
             {
                 int16_t label_y = state->icon_trans_label_y.cur_y;
                 u8g2_SetDrawColor(u8g2, 1);
-                u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
+                u8g2_SetFont(u8g2, u8g2_font_helvB08_tr);
                 u8g2_uint_t tw = u8g2_GetStrWidth(u8g2, sel_item->name);
                 int16_t tx = (int16_t)(128 - tw) / 2;
                 if (tx < 0) tx = 0;
@@ -386,10 +397,10 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
             int16_t ttl = VISIBLE_TOP;
             int16_t box_h = MENU_LINE_HEIGHT;
 
-            u8g2_SetFont(u8g2, u8g2_font_helvB10_tr);
+            u8g2_SetFont(u8g2, u8g2_font_helvB08_tr);
             int16_t ascent = u8g2_GetAscent(u8g2);
 
-            u8g2_SetFont(u8g2, u8g2_font_helvB10_tr);
+            u8g2_SetFont(u8g2, u8g2_font_helvB08_tr);
             for (uint8_t i = 0; i < newp->count && i < MENU_MAX_ITEMS; i++) {
                 int16_t y = state->items_new[i].cur_y;
                 if (y < 2 || y > 65) continue;
@@ -409,7 +420,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
             }
 
             /* 选择条 */
-            u8g2_SetFont(u8g2, u8g2_font_helvB10_tr);
+            u8g2_SetFont(u8g2, u8g2_font_helvB08_tr);
             if (newp->count > 0) {
                 int16_t box_top = state->items_new[0].cur_y - ascent - BOX_PAD_Y;
                 u8g2_uint_t sw = u8g2_GetStrWidth(u8g2, newp->items[0].name);
@@ -503,14 +514,48 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
                                (u8g2_uint_t)frame_w, (u8g2_uint_t)frame_h);
             }
 
-            /* ---- 文字标签: 屏幕下方居中 ---- */
+            /* ---- 文字标签: 屏幕下方居中 (阶段1:旧下沉 → 阶段2:新上浮) ---- */
             {
+                u8g2_SetFont(u8g2, u8g2_font_helvB08_tr);
                 u8g2_SetDrawColor(u8g2, 1);
-                u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
-                u8g2_uint_t tw = u8g2_GetStrWidth(u8g2, sel_item->name);
-                int16_t tx = (int16_t)(128 - tw) / 2;
-                if (tx < 0) tx = 0;
-                u8g2_DrawStr(u8g2, (u8g2_uint_t)tx, 60, sel_item->name);
+
+                if (state->icon_label_phase == 1) {
+                    /* 阶段1: 仅绘制旧标签 (下沉 60→64) */
+                    int16_t old_y = state->icon_label_old_y.cur_y;
+                    u8g2_uint_t tw = u8g2_GetStrWidth(u8g2, state->icon_label_old_name);
+                    int16_t tx = (int16_t)(128 - tw) / 2;
+                    if (tx < 0) tx = 0;
+                    u8g2_DrawStr(u8g2, (u8g2_uint_t)tx, (u8g2_uint_t)old_y, state->icon_label_old_name);
+
+                    if (state->icon_label_old_y.state == ANIM_FINISHED ||
+                        state->icon_label_old_y.state == ANIM_IDLE) {
+                        /* 阶段1完成 → 启动阶段2 */
+                        anim_start(&state->icon_label_new_y, 0, 64, 0, 60,
+                                   BAR_ANIM_MS, quad_ease_out);
+                        state->icon_label_phase = 2;
+                    }
+                } else if (state->icon_label_phase == 2) {
+                    /* 阶段2: 仅绘制新标签 (上浮 64→60) */
+                    int16_t new_y = state->icon_label_new_y.cur_y;
+                    u8g2_uint_t tw = u8g2_GetStrWidth(u8g2, state->icon_label_new_name);
+                    int16_t tx = (int16_t)(128 - tw) / 2;
+                    if (tx < 0) tx = 0;
+                    u8g2_DrawStr(u8g2, (u8g2_uint_t)tx, (u8g2_uint_t)new_y, state->icon_label_new_name);
+
+                    if (state->icon_label_new_y.state == ANIM_FINISHED ||
+                        state->icon_label_new_y.state == ANIM_IDLE) {
+                        /* 阶段2完成 → 恢复空闲 */
+                        state->icon_label_phase    = 0;
+                        state->icon_label_old_name = NULL;
+                        state->icon_label_new_name = NULL;
+                    }
+                } else {
+                    /* 空闲: 正常绘制当前选中项标签 */
+                    u8g2_uint_t tw = u8g2_GetStrWidth(u8g2, sel_item->name);
+                    int16_t tx = (int16_t)(128 - tw) / 2;
+                    if (tx < 0) tx = 0;
+                    u8g2_DrawStr(u8g2, (u8g2_uint_t)tx, 60, sel_item->name);
+                }
             }
 
             /* ---- 标题栏进度条 ---- */
@@ -532,7 +577,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
          *  文字菜单 (MENU_TEXT): 原有垂直文字逻辑
          * ================================================================ */
 
-        u8g2_SetFont(u8g2, u8g2_font_helvB10_tr);
+        u8g2_SetFont(u8g2, u8g2_font_helvB08_tr);
         int16_t ascent = u8g2_GetAscent(u8g2);
         int16_t box_h  = MENU_LINE_HEIGHT;
 
@@ -649,11 +694,24 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
 
 /* ======== key handlers ======== */
 
+/* 图标菜单选中变化: 触发标签切换动画 */
+static void icon_label_swap(menu_state_t *state, uint8_t old_sel, uint8_t new_sel) {
+    const menu_page_t *page = state->current;
+    if (old_sel == new_sel) return;
+
+    state->icon_label_old_name = page->items[old_sel].name;
+    state->icon_label_new_name = page->items[new_sel].name;
+    state->icon_label_phase    = 1;
+    anim_start(&state->icon_label_old_y, 0, 60, 0, 64, BAR_ANIM_MS, quad_ease_out);
+}
+
 bool menu_key_up(menu_state_t *state) {
     if (state->trans != TRANS_NONE) return false;
     if (state->current->style == MENU_ICON) {
         if (state->selected > 0) {
+            uint8_t old = state->selected;
             state->selected--;
+            icon_label_swap(state, old, state->selected);
             return true;
         }
         return false;
@@ -671,7 +729,9 @@ bool menu_key_down(menu_state_t *state) {
     if (state->current->style == MENU_ICON) {
         uint8_t n = state->current->count;
         if (n > 0 && state->selected + 1 < n) {
+            uint8_t old = state->selected;
             state->selected++;
+            icon_label_swap(state, old, state->selected);
             return true;
         }
         return false;
@@ -850,7 +910,7 @@ bool menu_key_enter(menu_state_t *state) {
         state->current       = item->submenu;
         state->selected      = 0;
         state->trans         = TRANS_OLD_OUT;
-        trans_start_old(state, 8);
+        trans_start_old(state, 7);
         return true;
     }
     return false;
@@ -864,7 +924,7 @@ bool menu_key_back(menu_state_t *state) {
         state->current       = state->current->parent;
         state->selected      = 0;
         state->trans         = TRANS_OLD_OUT;
-        trans_start_old(state, 8);
+        trans_start_old(state, 7);
         return true;
     }
     return false;
