@@ -31,20 +31,22 @@
 
 #define VISIBLE_TOP    MENU_TITLE_HEIGHT
 #define VISIBLE_BOTTOM (64 - MENU_LINE_HEIGHT)
+#define TEXT_TOP_PAD 3                 /* 标题分隔线下留白, 确保首项选择框对齐 */
 
 static int16_t calc_scroll_target(const menu_state_t *state) {
     uint8_t n = state->current->count;
     if (n == 0) return 0;
     int16_t cur = state->scroll_anim.cur_y;
-    int16_t item_y = VISIBLE_TOP + (int16_t)state->selected * MENU_LINE_HEIGHT - cur;
-    if (item_y < VISIBLE_TOP) {
+    int16_t list_top = VISIBLE_TOP + TEXT_TOP_PAD;
+    int16_t item_y = list_top + (int16_t)state->selected * MENU_LINE_HEIGHT - cur;
+    if (item_y < list_top) {
         int16_t t = (int16_t)state->selected * MENU_LINE_HEIGHT;
         return t < 0 ? 0 : t;
     }
     if (item_y > VISIBLE_BOTTOM) {
-        int16_t max_scroll = VISIBLE_TOP + (int16_t)(n - 1) * MENU_LINE_HEIGHT - VISIBLE_BOTTOM;
+        int16_t max_scroll = list_top + (int16_t)(n - 1) * MENU_LINE_HEIGHT - VISIBLE_BOTTOM;
         if (max_scroll < 0) max_scroll = 0;
-        int16_t t = VISIBLE_TOP + (int16_t)state->selected * MENU_LINE_HEIGHT - VISIBLE_BOTTOM;
+        int16_t t = list_top + (int16_t)state->selected * MENU_LINE_HEIGHT - VISIBLE_BOTTOM;
         if (t > max_scroll) t = max_scroll;
         return t < 0 ? 0 : t;
     }
@@ -582,15 +584,15 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
         int16_t box_h  = MENU_LINE_HEIGHT;
 
         /* bar target */
-        int16_t item_y     = VISIBLE_TOP + (int16_t)sel * MENU_LINE_HEIGHT - scroll + ascent;
+        int16_t item_y     = VISIBLE_TOP + TEXT_TOP_PAD + (int16_t)sel * MENU_LINE_HEIGHT - scroll + ascent;
         int16_t targ_box_y = item_y - ascent - BOX_PAD_Y;
         u8g2_uint_t str_w = u8g2_GetStrWidth(u8g2, page->items[sel].name);
         int16_t targ_box_w = (int16_t)str_w + BOX_PAD_X * 2;
 
         if (targ_box_w > BAR_MAX_W) targ_box_w = BAR_MAX_W;
 
-        if (targ_box_y < VISIBLE_TOP + 1)   targ_box_y = VISIBLE_TOP + 1;
-        if (targ_box_y > 64 - box_h)        targ_box_y = 64 - box_h;
+        if (targ_box_y < VISIBLE_TOP)        targ_box_y = VISIBLE_TOP;
+        if (targ_box_y > 64 - box_h)         targ_box_y = 64 - box_h;
 
         if (targ_box_y != state->bar_target_y || targ_box_w != state->bar_target_w) {
             int16_t start_y = state->bar_anim.cur_y;
@@ -630,7 +632,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
 
         /* ---- pass 1: all items normal text ---- */
         for (uint8_t i = 0; i < page->count; i++) {
-            int16_t y = VISIBLE_TOP + (int16_t)i * MENU_LINE_HEIGHT - scroll + ascent;
+            int16_t y = VISIBLE_TOP + TEXT_TOP_PAD + (int16_t)i * MENU_LINE_HEIGHT - scroll + ascent;
             if (y < VISIBLE_TOP || y > 65) continue;
             u8g2_SetDrawColor(u8g2, 1);
             int16_t tx = TEXT_START_X;
@@ -755,13 +757,14 @@ static void trans_start_old(menu_state_t *state, int16_t ascent) {
     }
 
     /* 文字菜单退出 */
-    int16_t ttl = VISIBLE_TOP;
+    int16_t title_target = VISIBLE_TOP - 1;
+    int16_t item_base    = VISIBLE_TOP + TEXT_TOP_PAD;
     int16_t end = -12;
     uint16_t dur = TRANS_MS / 2;
 
-    anim_start(&state->title_old, 0, ttl - 1, 0, end, dur, quad_ease_out);
+    anim_start(&state->title_old, 0, title_target, 0, end, dur, quad_ease_out);
     for (uint8_t i = 0; i < oldp->count && i < MENU_MAX_ITEMS; i++) {
-        int16_t y = ttl + (int16_t)i * MENU_LINE_HEIGHT + ascent;
+        int16_t y = item_base + (int16_t)i * MENU_LINE_HEIGHT + ascent;
         anim_start(&state->items_old[i], 0, y, 0, end, dur, quad_ease_out);
     }
     state->bar_target_y = -1;
@@ -771,13 +774,14 @@ static void trans_start_old(menu_state_t *state, int16_t ascent) {
 /* 文字菜单新页进入 (原有逻辑) */
 static void trans_start_new_text(menu_state_t *state, int16_t ascent) {
     const menu_page_t *newp = state->current;
-    int16_t ttl = VISIBLE_TOP;
+    int16_t title_target = VISIBLE_TOP - 1;
+    int16_t item_base    = VISIBLE_TOP + TEXT_TOP_PAD;
     int16_t end = -12;
     uint16_t dur = TRANS_MS / 2;
 
-    anim_start(&state->title_new, 0, end, 0, ttl - 1, dur, quad_ease_out);
+    anim_start(&state->title_new, 0, end, 0, title_target, dur, quad_ease_out);
     for (uint8_t i = 0; i < newp->count && i < MENU_MAX_ITEMS; i++) {
-        int16_t y = ttl + (int16_t)i * MENU_LINE_HEIGHT + ascent;
+        int16_t y = item_base + (int16_t)i * MENU_LINE_HEIGHT + ascent;
         anim_start(&state->items_new[i], 0, end, 0, y, dur, quad_ease_out);
     }
     state->bar_target_y = -1;
