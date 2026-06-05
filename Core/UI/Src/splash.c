@@ -5,7 +5,7 @@
 #define START_Y   (-15)
 #define LINE1_Y   28                       /* "power by"    基线 */
 #define LINE2_Y   45                       /* "OPEN MCU UI" 基线 */
-#define BORDER_Y  63                       /* 底部分界线          */
+#define BORDER_Y  64                       /* 底部分界线 (屏幕外, 静止时不可见) */
 
 void splash_init(splash_t *s) {
     s->state = SPLASH_ENTER;
