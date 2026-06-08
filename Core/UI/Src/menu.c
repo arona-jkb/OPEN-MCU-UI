@@ -134,6 +134,9 @@ void menu_init(menu_state_t *state, const menu_page_t *root) {
     state->bar_target_w = -1;
     anim_init(&state->prog_anim);
     state->prog_target = -1;
+    state->cached_slot_step = -1;
+    state->cached_count     = 0;
+    state->cached_iw        = 0;
     state->trans = TRANS_NONE;
     anim_init(&state->title_old);
     anim_init(&state->title_new);
@@ -211,12 +214,19 @@ void menu_update(menu_state_t *state) {
 
 /* ======== 图标菜单布局计算 ======== */
 /* 根据 count 返回 slot_step = slot_w + ICON_GAP */
-static int16_t icon_layout(uint8_t n, uint8_t iw) {
+/* 返回 slot_w + ICON_GAP, 结果缓存在 state->cached_slot_step */
+static int16_t icon_layout(menu_state_t *state, uint8_t n, uint8_t iw) {
+    if (state->cached_count == n && state->cached_iw == iw && state->cached_slot_step >= 0)
+        return state->cached_slot_step;
     int16_t total_gap = (int16_t)(n - 1) * ICON_GAP;
     int16_t slot_w = (TEXT_VISIBLE_W - total_gap) / (int16_t)n;
     if (slot_w < (int16_t)iw + ICON_FRAME_GAP * 2)
         slot_w = (int16_t)iw + ICON_FRAME_GAP * 2;
-    return slot_w + ICON_GAP;
+    int16_t step = slot_w + ICON_GAP;
+    state->cached_slot_step = step;
+    state->cached_count     = n;
+    state->cached_iw        = iw;
+    return step;
 }
 
 /* 选中项绝对中心 X (滚动前) */
@@ -225,6 +235,18 @@ static int16_t icon_layout(uint8_t n, uint8_t iw) {
 /* 第 i 项绝对中心 X */
 static int16_t icon_abs_cx(uint8_t i, uint8_t sel, int16_t step) {
     return FRAME_CENTER_X + ((int16_t)i - (int16_t)sel) * step;
+}
+
+/* 绘制标题栏文字 (根据 page->title_align 决定对齐) */
+static void draw_page_title(u8g2_t *u8g2, const menu_page_t *page, int16_t y) {
+    u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
+    if (page->title_align == TITLE_CENTER) {
+        u8g2_uint_t tw = u8g2_GetStrWidth(u8g2, page->title);
+        int16_t tx = (int16_t)(128 - tw) / 2; if (tx < 0) tx = 0;
+        u8g2_DrawStr(u8g2, (u8g2_uint_t)tx, y, page->title);
+    } else {
+        u8g2_DrawStr(u8g2, 2, y, page->title);
+    }
 }
 
 /* ======== main render ======== */
@@ -250,11 +272,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
                 u8g2_SetDrawColor(u8g2, 0);
                 u8g2_DrawBox(u8g2, 0, ttl_y - VISIBLE_TOP + 1, 128, VISIBLE_TOP);
                 u8g2_SetDrawColor(u8g2, 1);
-                u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
-                u8g2_uint_t ttw = u8g2_GetStrWidth(u8g2, oldp->title);
-                int16_t ttx = (int16_t)(128 - ttw) / 2;
-                if (ttx < 0) ttx = 0;
-                u8g2_DrawStr(u8g2, (u8g2_uint_t)ttx, (u8g2_uint_t)(ttl_y - 3), oldp->title);
+                draw_page_title(u8g2, oldp, ttl_y - 3);
                 if (n > 1) { int16_t pw = state->prog_anim.cur_x;
                     if (pw > 0) u8g2_DrawBox(u8g2, 0, VISIBLE_TOP, (u8g2_uint_t)pw, 3); }
             }
@@ -303,8 +321,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
             {   int16_t oty = state->title_old.cur_y;
                 u8g2_SetDrawColor(u8g2, 0); u8g2_DrawBox(u8g2, 0, oty - ttl + 1, 128, ttl);
                 u8g2_SetDrawColor(u8g2, 1); u8g2_DrawHLine(u8g2, 0, oty, 128);
-                u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
-                if (oty >= 3) u8g2_DrawStr(u8g2, 2, oty - 3, oldp->title); }
+                if (oty >= 3) draw_page_title(u8g2, oldp, oty - 3); }
             u8g2_SetFont(u8g2, u8g2_font_helvB08_tr);
             if (oldp->count > 0) {
                 uint8_t os = state->trans_old_sel;
@@ -335,10 +352,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
                 u8g2_SetDrawColor(u8g2, 0);
                 u8g2_DrawBox(u8g2, 0, ttl_y - VISIBLE_TOP + 1, 128, VISIBLE_TOP);
                 u8g2_SetDrawColor(u8g2, 1);
-                u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
-                u8g2_uint_t ttw = u8g2_GetStrWidth(u8g2, newp->title);
-                int16_t ttx = (int16_t)(128 - ttw) / 2; if (ttx < 0) ttx = 0;
-                u8g2_DrawStr(u8g2, (u8g2_uint_t)ttx, (u8g2_uint_t)(ttl_y - 3), newp->title);
+                draw_page_title(u8g2, newp, ttl_y - 3);
                 if (n > 1) { int16_t pw = state->prog_anim.cur_x;
                     if (pw > 0) u8g2_DrawBox(u8g2, 0, VISIBLE_TOP, (u8g2_uint_t)pw, 3); }
             }
@@ -388,8 +402,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
             {   int16_t nty = state->title_new.cur_y;
                 u8g2_SetDrawColor(u8g2, 0); u8g2_DrawBox(u8g2, 0, nty - ttl + 1, 128, ttl);
                 u8g2_SetDrawColor(u8g2, 1); u8g2_DrawHLine(u8g2, 0, nty, 128);
-                u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
-                if (nty >= 3) u8g2_DrawStr(u8g2, 2, nty - 3, newp->title); }
+                if (nty >= 3) draw_page_title(u8g2, newp, nty - 3); }
             u8g2_SetFont(u8g2, u8g2_font_helvB08_tr);
             if (newp->count > 0) {
                 int16_t bt = state->items_new[0].cur_y - ascent - BOX_PAD_Y;
@@ -418,7 +431,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
             uint8_t iw = sel_item->icon.w, ih = sel_item->icon.h;
             int16_t frame_pad = ICON_FRAME_GAP;
             int16_t icon_y = VISIBLE_TOP + 8;
-            int16_t step = icon_layout(n, iw);
+            int16_t step = icon_layout(state, n, iw);
 
             /* 滚动目标: 选中项居中 = sel * step */
             icon_sel_scroll(state, step);
@@ -575,13 +588,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
         u8g2_DrawBox(u8g2, 0, 0, 128, VISIBLE_TOP);
         u8g2_SetDrawColor(u8g2, 1);
         u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
-        if (page->style == MENU_ICON) {
-            u8g2_uint_t ttw = u8g2_GetStrWidth(u8g2, page->title);
-            int16_t ttx = (int16_t)(128 - ttw) / 2; if (ttx < 0) ttx = 0;
-            u8g2_DrawStr(u8g2, (u8g2_uint_t)ttx, VISIBLE_TOP - 3, page->title);
-        } else {
-            u8g2_DrawStr(u8g2, 2, VISIBLE_TOP - 3, page->title);
-        }
+        draw_page_title(u8g2, page, VISIBLE_TOP - 3);
         if (page->style == MENU_ICON && page->count > 1) {
             int16_t pw = state->prog_anim.cur_x;
             if (pw > 0) u8g2_DrawBox(u8g2, 0, VISIBLE_TOP, (u8g2_uint_t)pw, 3);
@@ -671,7 +678,7 @@ static void icon_trans_start_exit(menu_state_t *state) {
     uint8_t n = oldp->count;
     const menu_item_t *sel_item = &oldp->items[oldp->count > 0 ? state->trans_old_sel : 0];
     uint8_t iw = sel_item->icon.w;
-    int16_t step = icon_layout(n, iw);
+    int16_t step = icon_layout(state, n, iw);
 
     /* 标题滑出 */
     anim_start(&state->icon_trans_title_y, 0, VISIBLE_TOP - 1, 0, -12,
@@ -705,7 +712,7 @@ static void icon_trans_start(menu_state_t *state) {
 
     const menu_item_t *sel_item = &newp->items[0];  /* sel=0 */
     uint8_t iw = sel_item->icon.w;
-    int16_t step = icon_layout(n, iw);
+    int16_t step = icon_layout(state, n, iw);
 
     /* 标题滑入 */
     anim_start(&state->icon_trans_title_y, 0, -12, 0, VISIBLE_TOP - 1,

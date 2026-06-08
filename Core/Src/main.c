@@ -171,8 +171,11 @@ static void power_action(void) {
     app_ui_toggle_open("Power Save", &demo_power, "ON", "OFF");
 }
 
+static void confirm_reset_cb(bool ok) {
+    if (ok) app_ui_toast_show("Settings cleared");
+}
 static void reset_action(void) {
-    app_ui_toast_show("Settings cleared");
+    app_ui_confirm_open("Reset all settings?", confirm_reset_cb);
 }
 
 static void custom_screen1_action(void) { app_ui_custom_screen_enter(1); }

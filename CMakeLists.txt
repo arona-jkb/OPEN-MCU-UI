@@ -57,6 +57,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/UI/Src/Key.c
     Core/UI/Src/menu.c
     Core/UI/Src/popup.c
+    Core/UI/Src/popup_confirm.c
     Core/UI/Src/splash.c
     Core/UI/Src/app_ui.c
 )

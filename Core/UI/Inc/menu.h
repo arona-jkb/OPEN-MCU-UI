@@ -18,6 +18,12 @@ typedef enum {
     MENU_ICON,
 } menu_style_e;
 
+/* 标题栏对齐方式 */
+typedef enum {
+    TITLE_LEFT,                           /* 左对齐 (文字菜单)    */
+    TITLE_CENTER,                         /* 居中   (图标菜单)    */
+} menu_title_align_e;
+
 typedef struct {
     const uint8_t *bitmap;
     uint8_t        w;
@@ -32,20 +38,31 @@ typedef struct menu_item {
 } menu_item_t;
 
 typedef struct menu_page {
-    const char *title;
-    menu_style_e style;
+    const char        *title;
+    menu_style_e       style;
+    menu_title_align_e title_align;       /* 标题栏对齐方式        */
     const menu_item_t *items;
-    uint8_t count;
+    uint8_t            count;
     const struct menu_page *parent;
 } menu_page_t;
 
+/*
+ * 菜单页定义宏
+ *
+ *   MENU_PAGE_TEXT  →  style=MENU_TEXT,  align=TITLE_LEFT
+ *   MENU_PAGE_ICON  →  style=MENU_ICON,  align=TITLE_CENTER
+ *
+ *  如需覆盖对齐方式, 可手动写 menu_page_t 结构体。
+ */
 #define MENU_PAGE_TEXT(pg_title, parent_ptr, ...)                              \
-    { .title = (pg_title), .style = MENU_TEXT, .parent = (parent_ptr),         \
+    { .title = (pg_title), .style = MENU_TEXT, .title_align = TITLE_LEFT,      \
+      .parent = (parent_ptr),                                                   \
       .items = (const menu_item_t[]){ __VA_ARGS__ },                        \
       .count = sizeof((const menu_item_t[]){ __VA_ARGS__ }) / sizeof(menu_item_t) }
 
 #define MENU_PAGE_ICON(pg_title, parent_ptr, ...)                              \
-    { .title = (pg_title), .style = MENU_ICON, .parent = (parent_ptr),         \
+    { .title = (pg_title), .style = MENU_ICON, .title_align = TITLE_CENTER,    \
+      .parent = (parent_ptr),                                                   \
       .items = (const menu_item_t[]){ __VA_ARGS__ },                        \
       .count = sizeof((const menu_item_t[]){ __VA_ARGS__ }) / sizeof(menu_item_t) }
 
@@ -86,6 +103,10 @@ typedef struct {
     /* 进度条 */
     anim_ctrl_t prog_anim;
     int16_t     prog_target;
+    /* 图标布局缓存 (避免每帧除法) */
+    int16_t cached_slot_step;
+    uint8_t cached_count;
+    uint8_t cached_iw;
     /* 页面切换 */
     menu_trans_e       trans;
     const menu_page_t *trans_old;
