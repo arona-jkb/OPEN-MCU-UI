@@ -3,6 +3,7 @@
 
 #include "u8g2.h"
 #include "menu.h"
+#include "meter.h"
 
 /* 确认对话框回调 — 与 popup_confirm.h 中一致 */
 typedef void (*app_ui_confirm_fn)(bool ok);
@@ -40,6 +41,7 @@ void app_ui_toggle_open(const char *title, bool *val,
                         const char *on, const char *off);
 void app_ui_toast_show(const char *text);
 void app_ui_confirm_open(const char *text, app_ui_confirm_fn on_result);
+void app_ui_meter_open(const meter_page_t *page);
 void app_ui_goto_root(void);
 
 #endif

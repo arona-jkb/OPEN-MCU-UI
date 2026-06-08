@@ -28,6 +28,9 @@ typedef struct {
     popup_confirm_t confirm;
     popup_base_t    confirm_base;
 
+    /* 仪表盘 */
+    meter_state_t   meter;
+
     /* 弹窗注册表 */
     popup_setup_fn  popup_setups[APP_UI_MAX_POPUPS];
     uint8_t         popup_setup_count;
@@ -77,6 +80,10 @@ void app_ui_goto_root(void) {
     g.menu.bar_target_w  = -1;
 }
 
+void app_ui_meter_open(const meter_page_t *page) {
+    meter_open(&g.meter, page);
+}
+
 void app_ui_register_popup(popup_setup_fn setup) {
     if (g.popup_setup_count < APP_UI_MAX_POPUPS)
         g.popup_setups[g.popup_setup_count++] = setup;
@@ -107,6 +114,7 @@ void app_ui_init(u8g2_t *u8g2, const menu_page_t *root) {
 
     splash_init(&g.splash);
     menu_init(&g.menu, root);
+    meter_init(&g.meter);
     popup_mgr_init();
 
     /* 注册内置弹窗 */
@@ -130,11 +138,19 @@ void app_ui_init(u8g2_t *u8g2, const menu_page_t *root) {
 void app_ui_update(int8_t key) {
     splash_update(&g.splash);
     menu_update(&g.menu);
+    meter_update(&g.meter);
 
     if (!splash_done(&g.splash)) return;
 
     if (g.in_custom_screen) {
         if (key == 4) g.in_custom_screen = false;
+        return;
+    }
+
+    /* 仪表盘: 仅 Back 退出, 弹窗仍可响应按键 (Toast 等叠加) */
+    if (meter_active(&g.meter)) {
+        popup_mgr_update(key);
+        if (key == 4) meter_close(&g.meter);
         return;
     }
 
@@ -161,6 +177,14 @@ void app_ui_render(u8g2_t *u8g2) {
     if (g.in_custom_screen && g.custom_render_cb) {
         u8g2_ClearBuffer(u8g2);
         g.custom_render_cb(u8g2, g.custom_screen_id);
+        u8g2_SendBuffer(u8g2);
+        return;
+    }
+
+    if (meter_active(&g.meter)) {
+        u8g2_ClearBuffer(u8g2);
+        meter_render(&g.meter, u8g2);
+        popup_mgr_render(u8g2);
         u8g2_SendBuffer(u8g2);
         return;
     }

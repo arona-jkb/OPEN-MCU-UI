@@ -33,6 +33,7 @@
 /* forward declarations — must precede PV menu definitions */
 static void test_action(void);
 static void show_info_action(void);
+static void meter_action(void);
 static void brightness_action(void);
 static void power_action(void);
 static void reset_action(void);
@@ -62,6 +63,18 @@ static void my_custom_render(u8g2_t *u8g2, uint8_t id);
 /* demo variables referenced by action callbacks */
 static int16_t demo_brightness = 50;
 static bool    demo_power = true;
+
+/* ---- 仪表盘变量 ---- */
+static int16_t g_temp = 23;
+static int16_t g_humi = 67;
+static int16_t g_volt = 330;
+
+static meter_page_t dash_page =
+    METER_PAGE("Dashboard",
+        { "Temperature", &g_temp,  0, 60, "C", 5 },
+        { "Humidity",    &g_humi,  0, 100, "%", 5 },
+        { "Voltage",     &g_volt, 200, 500, "mV", 5 },
+    );
 
 /* ---- 24x24 全白测试图标 (共用同一份位图数据) ---- */
 #define ICON_W  24
@@ -145,6 +158,7 @@ static menu_page_t root_page =
         { "Custom Screen 2",                  {0}, custom_screen2_action, NULL },
         { "Test Animation Effects",           {0}, test_action,           NULL },
         { "Show System Information Panel",    {0}, show_info_action,      NULL },
+        { "Dashboard",                        {0}, meter_action,         NULL },
         { "Icon Menu",                        {0}, NULL,                 &icon_page },
         { "Settings",                         {0}, NULL,                 &settings_page },
         { "Display",                          {0}, NULL,                 &display_page },
@@ -162,6 +176,7 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN 0 */
 static void test_action(void)            { __NOP(); }
 static void show_info_action(void)       { __NOP(); }
+static void meter_action(void)           { app_ui_meter_open(&dash_page); }
 
 static void brightness_action(void) {
     app_ui_value_open("Brightness", &demo_brightness, 0, 100, 5);

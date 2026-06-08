@@ -56,6 +56,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/UI/Src/ux_move.c
     Core/UI/Src/Key.c
     Core/UI/Src/menu.c
+    Core/UI/Src/meter.c
     Core/UI/Src/popup.c
     Core/UI/Src/popup_confirm.c
     Core/UI/Src/splash.c
