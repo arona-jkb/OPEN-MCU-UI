@@ -138,6 +138,8 @@ void menu_init(menu_state_t *state, const menu_page_t *root) {
     state->cached_count     = 0;
     state->cached_iw        = 0;
     state->trans = TRANS_NONE;
+    state->trans_cb = NULL;
+    state->trans_cb_ctx = NULL;
     anim_init(&state->title_old);
     anim_init(&state->title_new);
     for (int i = 0; i < MENU_MAX_ITEMS; i++) {
@@ -168,11 +170,30 @@ void menu_update(menu_state_t *state) {
         }
         return;
     done:
-        state->trans = TRANS_NEW_IN;
-        if (state->current->style == MENU_ICON)
-            icon_trans_start(state);
-        else
-            trans_start_new_text(state, 7);
+        if (state->trans_cb) {
+            /* 外部画面过渡: 通知上层, 不进入 NEW_IN 阶段 */
+            state->trans = TRANS_NONE;
+            anim_set_position(&state->scroll_anim, 0, 0);
+            state->scroll_target = 0;
+            state->bar_target_y = -1; state->bar_target_w = -1;
+            state->text_scroll_target = -1;
+            state->icon_scroll_target = -1;
+            state->prog_target = -1;
+            state->icon_label_old_name = NULL;
+            state->icon_label_new_name = NULL;
+            state->icon_label_phase    = 0;
+            menu_trans_done_fn fn = state->trans_cb;
+            void *ctx = state->trans_cb_ctx;
+            state->trans_cb = NULL;
+            state->trans_cb_ctx = NULL;
+            fn(ctx);
+        } else {
+            state->trans = TRANS_NEW_IN;
+            if (state->current->style == MENU_ICON)
+                icon_trans_start(state);
+            else
+                trans_start_new_text(state, 7);
+        }
     } else if (state->trans == TRANS_NEW_IN) {
         if (state->current->style == MENU_ICON) {
             uint8_t n = state->current->count;
@@ -210,6 +231,28 @@ void menu_update(menu_state_t *state) {
             }
         }
     }
+}
+
+/* ======== 画面过渡 (供 app_ui 调用) ======== */
+
+/* 启动离开动画: 从当前页退出到外部画面 */
+void menu_trans_out(menu_state_t *state, menu_trans_done_fn cb, void *ctx) {
+    state->trans_cb     = cb;
+    state->trans_cb_ctx = ctx;
+    state->trans_old    = state->current;
+    state->trans_old_sel = state->selected;
+    state->trans        = TRANS_OLD_OUT;
+    trans_start_old(state, 7);
+}
+
+/* 启动进入动画: 从外部画面回到当前页 */
+void menu_trans_in(menu_state_t *state) {
+    state->selected = 0;
+    state->trans = TRANS_NEW_IN;
+    if (state->current->style == MENU_ICON)
+        icon_trans_start(state);
+    else
+        trans_start_new_text(state, 7);
 }
 
 /* ======== 图标菜单布局计算 ======== */
@@ -322,15 +365,7 @@ void menu_render(u8g2_t *u8g2, menu_state_t *state) {
                 u8g2_SetDrawColor(u8g2, 0); u8g2_DrawBox(u8g2, 0, oty - ttl + 1, 128, ttl);
                 u8g2_SetDrawColor(u8g2, 1); u8g2_DrawHLine(u8g2, 0, oty, 128);
                 if (oty >= 3) draw_page_title(u8g2, oldp, oty - 3); }
-            u8g2_SetFont(u8g2, u8g2_font_helvB08_tr);
-            if (oldp->count > 0) {
-                uint8_t os = state->trans_old_sel;
-                int16_t a = u8g2_GetAscent(u8g2);
-                int16_t bt = state->items_old[os].cur_y - a - BOX_PAD_Y;
-                u8g2_uint_t sw = u8g2_GetStrWidth(u8g2, oldp->items[os].name);
-                u8g2_SetDrawColor(u8g2, 2);
-                u8g2_DrawRBox(u8g2, 2, bt, (int16_t)sw + BOX_PAD_X * 2, MENU_LINE_HEIGHT, BOX_RADIUS);
-            }
+            /* 旧页选择条不绘制: 过渡期间文字本身已退场, 无必要 */
         }
 
     /* ============================================================
