@@ -65,12 +65,12 @@ static int16_t demo_brightness = 50;
 static bool    demo_power = true;
 
 /* ---- 仪表盘变量 ---- */
-static int16_t g_temp = 23;
+static int16_t g_temp = 30;
 static int16_t g_humi = 67;
 static int16_t g_volt = 330;
 
 static meter_page_t dash_page =
-    METER_PAGE("Dashboard",
+    METER_PAGE("TEST Dashboard",
         { "Temperature", &g_temp,  0, 60, "C", 5 },
         { "Humidity",    &g_humi,  0, 100, "%", 5 },
         { "Voltage",     &g_volt, 200, 500, "mV", 5 },
@@ -138,7 +138,7 @@ static menu_page_t about_page =
     MENU_PAGE_TEXT("About", &root_page,
         { "STM32F103 GUI Demo Project v4.0",          {0}, NULL, NULL },
         { "u8g2 Library + SSD1306 OLED Display",      {0}, NULL, NULL },
-        { "Build Date: 2026-05-30",                   {0}, NULL, NULL },
+        { "Build Date: 2026-06-08",                   {0}, NULL, NULL },
     );
 
 /* ---- 图标菜单页 (水平排列, 全白测试位图) ---- */

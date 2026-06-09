@@ -18,11 +18,11 @@
 #define LABEL_W       80                   /* 标签文字区域宽度        */
 
 /* ---- 动画时长 ---- */
-#define METER_ENTER_ROW_BASE  200          /* 首行飞入时长            */
-#define METER_ENTER_ROW_STEP  60           /* 每行递增延迟            */
-#define METER_ENTER_TITLE_MS  300          /* 标题入场时长            */
-#define METER_ENTER_FILL_MS   350          /* 填充展开时长            */
-#define METER_EXIT_MS         250          /* 退场时长                */
+#define METER_ENTER_ROW_BASE  400          /* 首行飞入时长            */
+#define METER_ENTER_ROW_STEP  120          /* 每行递增延迟            */
+#define METER_ENTER_TITLE_MS  500          /* 标题入场时长            */
+#define METER_ENTER_FILL_MS   600          /* 填充展开时长            */
+#define METER_EXIT_MS         450          /* 退场时长                */
 
 /* ---- 工具: 计算进度条填充宽度 (像素) ---- */
 static int16_t calc_fill_w(const meter_item_t *item) {
