@@ -22,7 +22,7 @@
  *
  * 渲染优先级: Splash → External Screen → Menu → Popups
  */
-#include "app_ui.h"
+#include "user_func.h"
 #include "popup.h"
 #include "popup_confirm.h"
 #include "splash.h"
@@ -66,7 +66,7 @@ typedef struct {
     /* 自定义界面 */
     bool              in_custom_screen;
     uint8_t           custom_screen_id;
-    app_ui_render_fn  custom_render_cb;
+    UI_screen_render_cb  custom_render_cb;
 
     /* 弹窗 */
     popup_value_t    value_popup;
@@ -82,7 +82,7 @@ typedef struct {
     meter_state_t    meter;
 
     /* 弹窗注册表 */
-    popup_setup_fn   popup_setups[APP_UI_MAX_POPUPS];
+    popup_setup_fn   popup_setups[UI_POPUP_MAX];
     uint8_t          popup_setup_count;
 } app_state_t;
 
@@ -113,29 +113,29 @@ static void on_menu_exit_done(void *ctx) {
  *  公开 API
  * ================================================================ */
 
-void app_ui_value_open(const char *title, int16_t *val,
+void UI_popup_value_open(const char *title, int16_t *val,
                        int16_t min, int16_t max, int16_t step) {
     popup_value_open(&g.value_popup, title, val, min, max, step);
 }
 
-void app_ui_toggle_open(const char *title, bool *val,
+void UI_popup_toggle_open(const char *title, bool *val,
                         const char *on, const char *off) {
     popup_toggle_open(&g.toggle_popup, title, val, on, off);
 }
 
-void app_ui_toast_show(const char *text) {
+void UI_popup_toast_show(const char *text) {
     popup_toast_show(&g.toast, text);
 }
 
-void app_ui_set_custom_render(app_ui_render_fn render) {
+void UI_screen_set_render(UI_screen_render_cb render) {
     g.custom_render_cb = render;
 }
 
-void app_ui_confirm_open(const char *text, app_ui_confirm_fn on_result) {
+void UI_popup_confirm_open(const char *text, UI_popup_confirm_cb on_result) {
     popup_confirm_open(&g.confirm, text, (confirm_callback_t)on_result);
 }
 
-void app_ui_goto_root(void) {
+void UI_menu_goto_root(void) {
     g.menu.current   = g.menu_root;
     g.menu.selected  = 0;
     anim_set_position(&g.menu.scroll_anim, 0, 0);
@@ -144,14 +144,14 @@ void app_ui_goto_root(void) {
     g.menu.bar_target_w  = -1;
 }
 
-void app_ui_register_popup(popup_setup_fn setup) {
-    if (g.popup_setup_count < APP_UI_MAX_POPUPS)
+void UI_popup_register(popup_setup_fn setup) {
+    if (g.popup_setup_count < UI_POPUP_MAX)
         g.popup_setups[g.popup_setup_count++] = setup;
 }
 
 /* ---- 画面切换入口 ---- */
 
-void app_ui_custom_screen_enter(uint8_t id) {
+void UI_screen_enter(uint8_t id) {
     if (!g.custom_render_cb) return;
     g.custom_screen_id = id;
     g.scr_target       = TGT_CUSTOM;
@@ -159,7 +159,7 @@ void app_ui_custom_screen_enter(uint8_t id) {
     menu_trans_out(&g.menu, on_menu_exit_done, &g);
 }
 
-void app_ui_meter_open(const meter_page_t *page) {
+void UI_meter_open(const meter_page_t *page) {
     g.pending_meter_page = page;
     g.scr_target         = TGT_METER;
     g.scr_state          = SCR_MENU_EXITING;
@@ -184,7 +184,7 @@ static void menu_render_wrap(void *ctx, u8g2_t *u8g2) {
  *  生命周期
  * ================================================================ */
 
-void app_ui_init(u8g2_t *u8g2, const menu_page_t *root) {
+void UI_init(u8g2_t *u8g2, const menu_page_t *root) {
     (void)u8g2;
     memset(&g, 0, sizeof(g));
     g.menu_root = root;
@@ -195,16 +195,16 @@ void app_ui_init(u8g2_t *u8g2, const menu_page_t *root) {
     meter_init(&g.meter);
     popup_mgr_init();
 
-    app_ui_register_popup(setup_value);
-    app_ui_register_popup(setup_toggle);
-    app_ui_register_popup(setup_toast);
-    app_ui_register_popup(setup_confirm);
+    UI_popup_register(setup_value);
+    UI_popup_register(setup_toggle);
+    UI_popup_register(setup_toast);
+    UI_popup_register(setup_confirm);
 
     for (uint8_t i = 0; i < g.popup_setup_count; i++)
         g.popup_setups[i]();
 }
 
-void app_ui_update(int8_t key) {
+void UI_update(int8_t key) {
     /* 所有画面每帧更新 (推进各自的动画/状态机) */
     splash_update(&g.splash);
     menu_update(&g.menu);
@@ -271,7 +271,7 @@ void app_ui_update(int8_t key) {
     }
 }
 
-void app_ui_render(u8g2_t *u8g2) {
+void UI_render(u8g2_t *u8g2) {
     /* Splash */
     if (!splash_done(&g.splash)) {
         splash_render_frame(&g.splash, u8g2, menu_render_wrap, &g.menu);

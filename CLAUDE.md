@@ -29,7 +29,7 @@ The IDE (`cube-cmake` / `starm-clangd`) is configured via `.vscode/settings.json
 
 The UI framework follows a **screen dispatcher** pattern. The menu system is the skeleton; everything else is a pluggable full-screen component.
 
-### Screen State Machine (`app_ui.c`)
+### Screen State Machine (`user_func.c`)
 
 ```
 SCR_MENU ←────────────────────────┐
@@ -63,7 +63,7 @@ SCR_MENU
 | `Core/UI/Src/popup_confirm.c` | Confirm dialog (OK/Cancel) |
 | `Core/UI/Src/meter.c` | Dashboard component (labeled progress bars) |
 | `Core/UI/Src/splash.c` | Boot/splash animation |
-| `Core/UI/Src/ux_move.c` | Animation engine |
+| `Core/UI/Src/anim_engine.c` | Animation engine |
 | `Core/UI/Src/Key.c` | Key input driver |
 
 ### Rendering Priority
@@ -97,15 +97,15 @@ void x_render(const x_state_t *s, u8g2_t *u8g2);
 bool x_active(const x_state_t *s);
 ```
 
-2. **Add `target_type_e` entry** in `app_ui.c`
+2. **Add `target_type_e` entry** in `user_func.c`
 
 3. **Add the internal callback** to `on_menu_exit_done`
 
 4. **Register in `app_state_t`** and call `x_init()` in `app_ui_init()`
 
-5. **Add cases** to `app_ui_update` (SCR_TARGET_ENTERING / ACTIVE / EXITING) and `app_ui_render`
+5. **Add cases** to `UI_update` (SCR_TARGET_ENTERING / ACTIVE / EXITING) and `UI_render`
 
-6. **Provide a public API** in `app_ui.h` (e.g. `app_ui_x_open()`)
+6. **Provide a public API** in `user_func.h` (e.g. `app_ui_x_open()`)
 
 ### Transition Design Philosophy
 
@@ -114,7 +114,7 @@ bool x_active(const x_state_t *s);
 - **External Screen → Menu**: `target.close()` starts target exit. When done, `menu_trans_in()` starts menu re-enter. When that completes, back to SCR_MENU.
 - **Custom screen**: Uses the same menu exit/enter transition, but the custom screen itself has no animation (pops in/out instantly).
 
-### Key API Summary (developer-facing, from `app_ui.h`)
+### Key API Summary (developer-facing, from `user_func.h`)
 
 | Function | Purpose |
 |----------|---------|
@@ -152,7 +152,7 @@ MENU_PAGE_ICON("title", &parent_page,  /* title centered, horizontal icons */
 
 Full u8g2 library in `Core/u8g2/`, auto-globbed by root CMakeLists.txt. Configured for SSD1306 I2C (address `0x78`). Hardware adaptation: `Core/Src/stm32_u8g2.c`.
 
-### Animation System (`Core/Src/ux_move.c`)
+### Animation System (`Core/Src/anim_engine.c`)
 
 - `anim_ctrl_t` state machine: `IDLE → PLAYING → FINISHED` (also `PAUSED`, `BACKING`)
 - `anim_manager_update()` — must be called each main-loop iteration
@@ -188,5 +188,25 @@ Full u8g2 library in `Core/u8g2/`, auto-globbed by root CMakeLists.txt. Configur
 | Toast Popup | `popup.h/c` | Auto-dismiss notification | Slide in/out |
 | Confirm Popup | `popup_confirm.h/c` | OK/Cancel with animated underline | Slide in/out |
 | Meter | `meter.h/c` | Labeled progress bars | Title fly-in, rows slide-in stagger |
-| Custom Screen | `app_ui.h/c` | Developer-defined render callback | Menu exit/enter (no custom anim) |
+| Custom Screen | `user_func.h/c` | Developer-defined render callback | Menu exit/enter (no custom anim) |
 | Splash | `splash.h/c` | Boot logo animation | Text fly-in, hold, fly-out |
+
+### Naming Conventions
+
+Public (developer-facing) APIs follow the pattern:
+
+```
+UI_component_subcomponent_action
+```
+
+| Prefix | Component | Example |
+|--------|-----------|---------|
+| `UI_` | Framework lifecycle | `UI_init`, `UI_update`, `UI_render` |
+| `UI_menu_` | Menu navigation | `UI_menu_goto_root` |
+| `UI_popup_` | Popup dialogs | `UI_popup_value_open`, `UI_popup_toast_show`, `UI_popup_confirm_open` |
+| `UI_meter_` | Meter/dashboard | `UI_meter_open` |
+| `UI_screen_` | Custom screen | `UI_screen_enter`, `UI_screen_set_render` |
+
+Internal module functions use lowercase prefix with underscore: `menu_init`, `meter_render`, `popup_mgr_update`, `anim_start`.
+
+Private file naming: lowercase with underscore. Public-entry file: `user_func.h` (was `app_ui.h`). Timing constants: `anitime_config.h`.

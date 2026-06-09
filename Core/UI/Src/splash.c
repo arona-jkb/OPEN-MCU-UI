@@ -1,5 +1,5 @@
 #include "splash.h"
-#include "ui_timing.h"
+#include "anitime_config.h"
 
 /* 飞入/飞出起始 Y (屏幕上方) 及各元素目标 Y */
 #define START_Y   (-15)

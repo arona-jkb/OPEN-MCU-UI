@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "u8g2.h"
-#include "ux_move.h"
+#include "anim_engine.h"
 
 /* ---------- 共享状态 ---------- */
 

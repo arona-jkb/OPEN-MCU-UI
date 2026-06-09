@@ -1,5 +1,5 @@
-#ifndef __UI_TIMING_H__
-#define __UI_TIMING_H__
+#ifndef __ANITIME_CONFIG_H__
+#define __ANITIME_CONFIG_H__
 
 /* ================================================================
  *  全局动画时长参数 (ms)

@@ -1,5 +1,5 @@
-#ifndef __UX_MOVE_H__
-#define __UX_MOVE_H__
+#ifndef __ANIM_ENGINE_H__
+#define __ANIM_ENGINE_H__
 
 #include <stdint.h>
 #include <stdbool.h>

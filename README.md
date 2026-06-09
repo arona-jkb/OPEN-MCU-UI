@@ -62,16 +62,16 @@ GUI_demo/
 ├── Core/
 │   ├── UI/
 │   │   ├── Inc/
-│   │   │   ├── app_ui.h          ← 开发者唯一入口
+│   │   │   ├── user_func.h          ← 开发者唯一入口
 │   │   │   ├── menu.h            ← 菜单数据结构 + 宏
 │   │   │   ├── meter.h           ← 仪表盘数据 + API
 │   │   │   ├── popup.h           ← 弹窗管理器 + value/toggle/toast
 │   │   │   ├── popup_confirm.h   ← 确认对话框
-│   │   │   ├── ux_move.h         ← 动画引擎
+│   │   │   ├── anim_engine.h         ← 动画引擎
 │   │   │   ├── splash.h          ← 启动动画
 │   │   │   ├── Key.h             ← 按键驱动
 │   │   │   ├── stm32_u8g2.h      ← u8g2 硬件适配
-│   │   │   └── ui_timing.h       ← 集中管理动画时长
+│   │   │   └── anitime_config.h       ← 集中管理动画时长
 │   │   └── Src/                  ← 对应 .c 实现
 │   ├── Inc/                      ← CubeMX 生成 (main.h 等)
 │   ├── Src/
@@ -91,20 +91,20 @@ GUI_demo/
 ### 5.1 主循环
 
 ```c
-#include "app_ui.h"
+#include "user_func.h"
 #include "Key.h"
 
 int main(void) {
     // HAL 及外设初始化 (略)
 
-    app_ui_init(&u8g2, &root_page);
-    app_ui_set_custom_render(my_custom_render);
+    UI_init(&u8g2, &root_page);
+    UI_screen_set_render(my_custom_render);
 
     while (1) {
         anim_manager_update();
         int8_t key = Key();
-        app_ui_update(key);
-        app_ui_render(&u8g2);
+        UI_update(key);
+        UI_render(&u8g2);
     }
 }
 ```
@@ -145,12 +145,12 @@ static menu_page_t root_page =
 static int16_t g_val = 50;
 static bool    g_en  = true;
 
-static void cb_value(void)  { app_ui_value_open ("Value", &g_val, 0, 100, 10); }
-static void cb_toggle(void) { app_ui_toggle_open("Power", &g_en,  "ON", "OFF"); }
-static void cb_toast(void)  { app_ui_toast_show("Done."); }
+static void cb_value(void)  { UI_popup_value_open ("Value", &g_val, 0, 100, 10); }
+static void cb_toggle(void) { UI_popup_toggle_open("Power", &g_en,  "ON", "OFF"); }
+static void cb_toast(void)  { UI_popup_toast_show("Done."); }
 
-static void cb_confirm_ok(bool ok) { if (ok) app_ui_toast_show("OK!"); }
-static void cb_confirm(void)       { app_ui_confirm_open("Sure?", cb_confirm_ok); }
+static void cb_confirm_ok(bool ok) { if (ok) UI_popup_toast_show("OK!"); }
+static void cb_confirm(void)       { UI_popup_confirm_open("Sure?", cb_confirm_ok); }
 ```
 
 ### 5.4 仪表盘
@@ -164,7 +164,7 @@ static meter_page_t dash =
         { "Humidity",    &g_humi, 0, 100, "%", 5 },
     );
 
-static void cb_dash(void) { app_ui_meter_open(&dash); }
+static void cb_dash(void) { UI_meter_open(&dash); }
 ```
 
 ### 5.5 自定义界面
@@ -175,7 +175,7 @@ static void my_render(u8g2_t *u8g2, uint8_t id) {
     u8g2_DrawStr(u8g2, 10, 30, id == 1 ? "Screen 1" : "Screen 2");
 }
 
-static void cb_screen1(void) { app_ui_custom_screen_enter(1); }
+static void cb_screen1(void) { UI_screen_enter(1); }
 ```
 
 ---
@@ -186,24 +186,24 @@ static void cb_screen1(void) { app_ui_custom_screen_enter(1); }
 
 | 函数 | 说明 |
 |------|------|
-| `app_ui_custom_screen_enter(id)` | 进入自定义界面（菜单退场 → 自定义即时出现） |
-| `app_ui_meter_open(page)` | 进入仪表盘（菜单退场 → 仪表盘入场动画） |
+| `UI_screen_enter(id)` | 进入自定义界面（菜单退场 → 自定义即时出现） |
+| `UI_meter_open(page)` | 进入仪表盘（菜单退场 → 仪表盘入场动画） |
 
 ### 弹窗
 
 | 函数 | 说明 |
 |------|------|
-| `app_ui_value_open(title, *val, min, max, step)` | 数值调节弹窗 |
-| `app_ui_toggle_open(title, *val, on, off)` | 开关弹窗 |
-| `app_ui_toast_show(text)` | 1 秒自动消失通知 |
-| `app_ui_confirm_open(text, callback)` | 确认对话框 (OK/Cancel, 回调 bool) |
+| `UI_popup_value_open(title, *val, min, max, step)` | 数值调节弹窗 |
+| `UI_popup_toggle_open(title, *val, on, off)` | 开关弹窗 |
+| `UI_popup_toast_show(text)` | 1 秒自动消失通知 |
+| `UI_popup_confirm_open(text, callback)` | 确认对话框 (OK/Cancel, 回调 bool) |
 
 ### 钩子与导航
 
 | 函数 | 说明 |
 |------|------|
-| `app_ui_set_custom_render(fn)` | 注册自定义界面绘制回调 |
-| `app_ui_goto_root()` | 任意层级直接返回根菜单 |
+| `UI_screen_set_render(fn)` | 注册自定义界面绘制回调 |
+| `UI_menu_goto_root()` | 任意层级直接返回根菜单 |
 
 ---
 
@@ -242,7 +242,7 @@ SCR_MENU ◀──done── SCR_MENU_ENTERING ◀──done─── SCR_TARGET
 
 | 文件 | 控制范围 |
 |------|---------|
-| `Core/UI/Inc/ui_timing.h` | 菜单、弹窗、Splash 全局时长 |
+| `Core/UI/Inc/anitime_config.h` | 菜单、弹窗、Splash 全局时长 |
 | `Core/UI/Src/menu.c` 宏 | 图标入场 stagger 延时 |
 | `Core/UI/Src/meter.c` 宏 | 仪表盘入场 stagger 延时 |
 

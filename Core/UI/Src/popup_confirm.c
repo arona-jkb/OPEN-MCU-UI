@@ -6,7 +6,7 @@
  *  结果通过 on_result 回调通知调用者 (true=确认, false=取消)
  */
 #include "popup_confirm.h"
-#include "ui_timing.h"
+#include "anitime_config.h"
 
 /* 共享布局常数 */
 #define POPUP_W     110

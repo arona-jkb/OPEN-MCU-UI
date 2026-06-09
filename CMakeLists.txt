@@ -53,14 +53,14 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${U8G2_SOURCES})
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
     Core/UI/Src/stm32_u8g2.c
-    Core/UI/Src/ux_move.c
+    Core/UI/Src/anim_engine.c
     Core/UI/Src/Key.c
     Core/UI/Src/menu.c
     Core/UI/Src/meter.c
     Core/UI/Src/popup.c
     Core/UI/Src/popup_confirm.c
     Core/UI/Src/splash.c
-    Core/UI/Src/app_ui.c
+    Core/UI/Src/user_func.c
 )
 
 # Add include paths

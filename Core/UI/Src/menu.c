@@ -5,7 +5,7 @@
  *  图标菜单: 选择框固定屏幕中央, 选中项居中, 其余向两侧展开
  */
 #include "menu.h"
-#include "ui_timing.h"
+#include "anitime_config.h"
 
 /* ---- 文字菜单 ---- */
 #define BOX_PAD_X    5

@@ -10,7 +10,7 @@
  * 开发者只需调用 app_ui_*_open() / app_ui_toast_show().
  */
 #include "popup.h"
-#include "ui_timing.h"
+#include "anitime_config.h"
 #include <stdio.h>
 
 /* ================================================================

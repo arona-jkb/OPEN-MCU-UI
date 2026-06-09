@@ -27,7 +27,7 @@
 /* USER CODE BEGIN Includes */
 #include "stm32_u8g2.h"
 #include "u8g2.h"
-#include "app_ui.h"
+#include "user_func.h"
 #include "Key.h"
 
 /* forward declarations — must precede PV menu definitions */
@@ -176,25 +176,25 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN 0 */
 static void test_action(void)            { __NOP(); }
 static void show_info_action(void)       { __NOP(); }
-static void meter_action(void)           { app_ui_meter_open(&dash_page); }
+static void meter_action(void)           { UI_meter_open(&dash_page); }
 
 static void brightness_action(void) {
-    app_ui_value_open("Brightness", &demo_brightness, 0, 100, 5);
+    UI_popup_value_open("Brightness", &demo_brightness, 0, 100, 5);
 }
 
 static void power_action(void) {
-    app_ui_toggle_open("Power Save", &demo_power, "ON", "OFF");
+    UI_popup_toggle_open("Power Save", &demo_power, "ON", "OFF");
 }
 
 static void confirm_reset_cb(bool ok) {
-    if (ok) app_ui_toast_show("Settings cleared");
+    if (ok) UI_popup_toast_show("Settings cleared");
 }
 static void reset_action(void) {
-    app_ui_confirm_open("Reset all settings?", confirm_reset_cb);
+    UI_popup_confirm_open("Reset all settings?", confirm_reset_cb);
 }
 
-static void custom_screen1_action(void) { app_ui_custom_screen_enter(1); }
-static void custom_screen2_action(void) { app_ui_custom_screen_enter(2); }
+static void custom_screen1_action(void) { UI_screen_enter(1); }
+static void custom_screen2_action(void) { UI_screen_enter(2); }
 
 static void my_custom_render(u8g2_t *u8g2, uint8_t id) {
     u8g2_SetFontMode(u8g2, 1);
@@ -253,8 +253,8 @@ int main(void)
   MD_OLED_RST_Set();
   u8g2Init(&u8g2);
 
-  app_ui_init(&u8g2, &root_page);
-  app_ui_set_custom_render(my_custom_render);
+  UI_init(&u8g2, &root_page);
+  UI_screen_set_render(my_custom_render);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -264,8 +264,8 @@ int main(void)
       anim_manager_update();
 
       int8_t key = Key();
-      app_ui_update(key);
-      app_ui_render(&u8g2);
+      UI_update(key);
+      UI_render(&u8g2);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

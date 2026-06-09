@@ -6,7 +6,7 @@
  * 退场: 反向。
  */
 #include "meter.h"
-#include "ui_timing.h"
+#include "anitime_config.h"
 #include <stdio.h>
 
 /* ---- 布局常数 ---- */
