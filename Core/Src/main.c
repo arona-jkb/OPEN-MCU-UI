@@ -31,8 +31,6 @@
 #include "Key.h"
 
 /* forward declarations — must precede PV menu definitions */
-static void test_action(void);
-static void show_info_action(void);
 static void meter_action(void);
 static void brightness_action(void);
 static void power_action(void);
@@ -156,8 +154,6 @@ static menu_page_t root_page =
     MENU_PAGE_TEXT("Main Menu", NULL,
         { "Custom Screen 1 - Long Name Test", {0}, custom_screen1_action, NULL },
         { "Custom Screen 2",                  {0}, custom_screen2_action, NULL },
-        { "Test Animation Effects",           {0}, test_action,           NULL },
-        { "Show System Information Panel",    {0}, show_info_action,      NULL },
         { "Dashboard",                        {0}, meter_action,         NULL },
         { "Icon Menu",                        {0}, NULL,                 &icon_page },
         { "Settings",                         {0}, NULL,                 &settings_page },
@@ -174,8 +170,6 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-static void test_action(void)            { __NOP(); }
-static void show_info_action(void)       { __NOP(); }
 static void meter_action(void)           { UI_meter_open(&dash_page); }
 
 static void brightness_action(void) {
