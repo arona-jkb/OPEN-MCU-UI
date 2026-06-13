@@ -31,7 +31,8 @@
 #include "Key.h"
 
 /* forward declarations — must precede PV menu definitions */
-static void meter_action(void);
+static void meter_bar_action(void);
+static void meter_quad_action(void);
 static void brightness_action(void);
 static void power_action(void);
 static void reset_action(void);
@@ -63,15 +64,27 @@ static int16_t demo_brightness = 50;
 static bool    demo_power = true;
 
 /* ---- 仪表盘变量 ---- */
-static int16_t g_temp = 30;
-static int16_t g_humi = 67;
-static int16_t g_volt = 330;
+static int16_t g_temp  = 30;
+static int16_t g_humi  = 67;
+static int16_t g_volt  = 330;
+static int16_t g_press = 1013;
+static int16_t g_rpm   = 2750;
 
-static meter_page_t dash_page =
-    METER_PAGE("TEST Dashboard",
-        { "Temperature", &g_temp,  0, 60, "C", 5 },
-        { "Humidity",    &g_humi,  0, 100, "%", 5 },
-        { "Voltage",     &g_volt, 200, 500, "mV", 5 },
+/* 进度条型仪表盘 (bar) */
+static meter_bar_page_t dash_bar_page =
+    METER_BAR_PAGE("Bar Dashboard",
+        { "Temperature", &g_temp,  0,   60, "C",   5 },
+        { "Humidity",    &g_humi,  0,  100, "%",   5 },
+        { "Voltage",     &g_volt,  200, 500, "mV", 5 },
+    );
+
+/* 四象限型仪表盘 (quad) */
+static meter_quad_page_t dash_quad_page =
+    METER_QUAD_PAGE("Quad Monitor",
+        { "Temperature", &g_temp,  "°C"   },
+        { "Humidity",    &g_humi,  "%"    },
+        { "Pressure",    &g_press, "hPa"  },
+        { "Motor RPM",   &g_rpm,   "rpm"  },
     );
 
 /* ---- 24x24 全白测试图标 (共用同一份位图数据) ---- */
@@ -154,11 +167,12 @@ static menu_page_t root_page =
     MENU_PAGE_TEXT("Main Menu", NULL,
         { "Custom Screen 1 - Long Name Test", {0}, custom_screen1_action, NULL },
         { "Custom Screen 2",                  {0}, custom_screen2_action, NULL },
-        { "Dashboard",                        {0}, meter_action,         NULL },
-        { "Icon Menu",                        {0}, NULL,                 &icon_page },
-        { "Settings",                         {0}, NULL,                 &settings_page },
-        { "Display",                          {0}, NULL,                 &display_page },
-        { "About",                            {0}, NULL,                 &about_page },
+        { "Bar Dashboard",                    {0}, meter_bar_action,    NULL },
+        { "Quad Monitor",                     {0}, meter_quad_action,   NULL },
+        { "Icon Menu",                        {0}, NULL,                &icon_page },
+        { "Settings",                         {0}, NULL,                &settings_page },
+        { "Display",                          {0}, NULL,                &display_page },
+        { "About",                            {0}, NULL,                &about_page },
     );
 /* USER CODE END PV */
 
@@ -170,7 +184,8 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-static void meter_action(void)           { UI_meter_open(&dash_page); }
+static void meter_bar_action(void)        { UI_meter_bar_open(&dash_bar_page); }
+static void meter_quad_action(void)       { UI_meter_quad_open(&dash_quad_page); }
 
 static void brightness_action(void) {
     UI_popup_value_open("Brightness", &demo_brightness, 0, 100, 5);

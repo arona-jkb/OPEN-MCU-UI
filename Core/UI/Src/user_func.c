@@ -21,6 +21,11 @@
  *   SCR_MENU_ENTERING ─────┘
  *
  * 渲染优先级: Splash → External Screen → Menu → Popups
+ *
+ * 支持的目标画面类型:
+ *   TGT_METER_BAR  — 进度条型仪表盘 (meter_bar)
+ *   TGT_METER_QUAD — 四象限型仪表盘 (meter_quad)
+ *   TGT_CUSTOM     — 自定义渲染画面
  */
 #include "user_func.h"
 #include "popup.h"
@@ -45,7 +50,8 @@ typedef enum {
 
 typedef enum {
     TGT_NONE,
-    TGT_METER,
+    TGT_METER_BAR,
+    TGT_METER_QUAD,
     TGT_CUSTOM,
 } target_type_e;
 
@@ -61,7 +67,10 @@ typedef struct {
     /* 画面调度 */
     screen_state_e     scr_state;
     target_type_e      scr_target;
-    const meter_page_t *pending_meter_page;
+
+    /* 待启动的仪表盘页面 */
+    const meter_bar_page_t  *pending_meter_bar_page;
+    const meter_quad_page_t *pending_meter_quad_page;
 
     /* 自定义界面 */
     bool              in_custom_screen;
@@ -79,7 +88,8 @@ typedef struct {
     popup_base_t     confirm_base;
 
     /* 仪表盘 */
-    meter_state_t    meter;
+    meter_bar_state_t  meter_bar;
+    meter_quad_state_t meter_quad;
 
     /* 弹窗注册表 */
     popup_setup_fn   popup_setups[UI_POPUP_MAX];
@@ -97,8 +107,11 @@ static void on_menu_exit_done(void *ctx) {
     app_state_t *a = (app_state_t *)ctx;
     a->scr_state = SCR_TARGET_ENTERING;
     switch (a->scr_target) {
-    case TGT_METER:
-        meter_open(&a->meter, a->pending_meter_page);
+    case TGT_METER_BAR:
+        meter_bar_open(&a->meter_bar, a->pending_meter_bar_page);
+        break;
+    case TGT_METER_QUAD:
+        meter_quad_open(&a->meter_quad, a->pending_meter_quad_page);
         break;
     case TGT_CUSTOM:
         /* 自定义界面无入场动画, 直接活跃 */
@@ -159,10 +172,17 @@ void UI_screen_enter(uint8_t id) {
     menu_trans_out(&g.menu, on_menu_exit_done, &g);
 }
 
-void UI_meter_open(const meter_page_t *page) {
-    g.pending_meter_page = page;
-    g.scr_target         = TGT_METER;
-    g.scr_state          = SCR_MENU_EXITING;
+void UI_meter_bar_open(const meter_bar_page_t *page) {
+    g.pending_meter_bar_page = page;
+    g.scr_target             = TGT_METER_BAR;
+    g.scr_state              = SCR_MENU_EXITING;
+    menu_trans_out(&g.menu, on_menu_exit_done, &g);
+}
+
+void UI_meter_quad_open(const meter_quad_page_t *page) {
+    g.pending_meter_quad_page = page;
+    g.scr_target              = TGT_METER_QUAD;
+    g.scr_state               = SCR_MENU_EXITING;
     menu_trans_out(&g.menu, on_menu_exit_done, &g);
 }
 
@@ -192,7 +212,8 @@ void UI_init(u8g2_t *u8g2, const menu_page_t *root) {
 
     splash_init(&g.splash);
     menu_init(&g.menu, root);
-    meter_init(&g.meter);
+    meter_bar_init(&g.meter_bar);
+    meter_quad_init(&g.meter_quad);
     popup_mgr_init();
 
     UI_popup_register(setup_value);
@@ -208,7 +229,8 @@ void UI_update(int8_t key) {
     /* 所有画面每帧更新 (推进各自的动画/状态机) */
     splash_update(&g.splash);
     menu_update(&g.menu);
-    meter_update(&g.meter);
+    meter_bar_update(&g.meter_bar);
+    meter_quad_update(&g.meter_quad);
 
     if (!splash_done(&g.splash)) return;
 
@@ -221,7 +243,9 @@ void UI_update(int8_t key) {
 
     case SCR_TARGET_ENTERING:
         /* 目标画面的入场动画 */
-        if (g.scr_target == TGT_METER && g.meter.trans == METER_ACTIVE)
+        if (g.scr_target == TGT_METER_BAR && g.meter_bar.trans == METER_BAR_ACTIVE)
+            g.scr_state = SCR_TARGET_ACTIVE;
+        else if (g.scr_target == TGT_METER_QUAD && g.meter_quad.trans == METER_QUAD_ACTIVE)
             g.scr_state = SCR_TARGET_ACTIVE;
         /* TGT_CUSTOM 在 on_menu_exit_done 中直接跳到 ACTIVE */
         /* 入场期间屏蔽按键 */
@@ -231,8 +255,11 @@ void UI_update(int8_t key) {
         /* 目标画面活跃: 仅 Back 退出 */
         popup_mgr_update(key);                    /* Toast 等叠加弹窗仍响应 */
         if (key == 4) {
-            if (g.scr_target == TGT_METER) {
-                meter_close(&g.meter);
+            if (g.scr_target == TGT_METER_BAR) {
+                meter_bar_close(&g.meter_bar);
+                g.scr_state = SCR_TARGET_EXITING;
+            } else if (g.scr_target == TGT_METER_QUAD) {
+                meter_quad_close(&g.meter_quad);
                 g.scr_state = SCR_TARGET_EXITING;
             } else if (g.scr_target == TGT_CUSTOM) {
                 g.in_custom_screen = false;
@@ -244,7 +271,8 @@ void UI_update(int8_t key) {
 
     case SCR_TARGET_EXITING:
         /* 目标画面退场中 */
-        if (g.scr_target == TGT_METER && g.meter.trans == METER_IDLE) {
+        if ((g.scr_target == TGT_METER_BAR  && g.meter_bar.trans == METER_BAR_IDLE) ||
+            (g.scr_target == TGT_METER_QUAD && g.meter_quad.trans == METER_QUAD_IDLE)) {
             /* 仪表盘退场完成 → 菜单入场 */
             menu_trans_in(&g.menu);
             g.scr_state = SCR_MENU_ENTERING;
@@ -293,8 +321,10 @@ void UI_render(u8g2_t *u8g2) {
     case SCR_TARGET_ENTERING:
     case SCR_TARGET_ACTIVE:
     case SCR_TARGET_EXITING:
-        if (g.scr_target == TGT_METER) {
-            meter_render(&g.meter, u8g2);
+        if (g.scr_target == TGT_METER_BAR) {
+            meter_bar_render(&g.meter_bar, u8g2);
+        } else if (g.scr_target == TGT_METER_QUAD) {
+            meter_quad_render(&g.meter_quad, u8g2);
         } else if (g.scr_target == TGT_CUSTOM && g.custom_render_cb) {
             g.custom_render_cb(u8g2, g.custom_screen_id);
         }

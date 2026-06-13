@@ -27,7 +27,12 @@ void UI_popup_register(popup_setup_fn setup);
 
 void UI_screen_enter(uint8_t id);
 void UI_screen_set_render(UI_screen_render_cb render);
-void UI_meter_open(const meter_page_t *page);
+
+/* 仪表盘: bar 型 (进度条) */
+void UI_meter_bar_open(const meter_bar_page_t *page);
+
+/* 仪表盘: quad 型 (四象限数值) */
+void UI_meter_quad_open(const meter_quad_page_t *page);
 
 /* ---------- 弹窗快捷函数 ---------- */
 
