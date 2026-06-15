@@ -134,9 +134,9 @@ typedef struct {
     const meter_quad_page_t *page;
 
     meter_quad_trans_e trans;
-    anim_ctrl_t title_y;                          /* 标题栏 Y 动画       */
-    anim_ctrl_t item_y[METER_QUAD_MAX_ITEMS];     /* 每象限 Y 滑入动画   */
-    int16_t     cell_x[METER_QUAD_MAX_ITEMS];     /* 每象限 X 基准坐标   */
+    anim_ctrl_t title_y;                          /* 标题栏 Y 动画        */
+    anim_ctrl_t item_x[METER_QUAD_MAX_ITEMS];     /* 每象限 X 方向动画    */
+    anim_ctrl_t item_y[METER_QUAD_MAX_ITEMS];     /* 每象限 Y 方向动画    */
 } meter_quad_state_t;
 
 /* ---------- API ---------- */

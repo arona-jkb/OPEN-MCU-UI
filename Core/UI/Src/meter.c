@@ -203,12 +203,21 @@ void meter_bar_render(const meter_bar_state_t *s, u8g2_t *u8g2) {
  *    ├─────────────┼──────────────┤
  *    │    Q1       │     Q2       │
  *    │  label      │   label      │  ← 25px 高
- *    │   **25**°C  │   **67**%    │
+ *    │   25 °C     │   67 %       │
  *    ├─────────────┼──────────────┤
  *    │    Q3       │     Q4       │
  *    │  label      │   label      │  ← 25px 高
- *    │  **330**mV  │ **1013**hPa  │
+ *    │  330 mV     │ 1013 hPa     │
  *    └─────────────┴──────────────┘
+ *
+ *  入场动画 (差异化):
+ *    Q1 (左上): 从左侧边缘水平滑入  → 最先完成
+ *    Q2 (右上): 从右侧边缘水平滑入  → 第二完成
+ *    Q3 (左下): 从左下角斜向滑入    → 第三完成
+ *    Q4 (右下): 从右下角斜向滑入    → 最后完成 (间距拉大)
+ *
+ *  退场动画 (反向):
+ *    Q4 最快 → Q3 → Q2 → Q1 最慢
  * ================================================================ */
 
 /* ---- 布局常数 ---- */
@@ -218,13 +227,33 @@ void meter_bar_render(const meter_bar_state_t *s, u8g2_t *u8g2) {
 #define QUAD_CELL_H      25                     /* 每格高 */
 #define QUAD_COL2_X      65                     /* 第二列 X 起点 (64+1) */
 
-/* ---- 动画时长 ---- */
-#define QUAD_ENTER_TITLE_MS   400               /* 标题入场时长            */
-#define QUAD_ENTER_ITEM_MS    350               /* 象限入场基础时长        */
-#define QUAD_ENTER_STEP_MS    80                /* 象限入场递增延迟        */
-#define QUAD_EXIT_MS          300               /* 退场时长                */
+/* ---- 入场动画时长 (ms, 每象限独立) ---- */
+#define QUAD_ENTER_TITLE_MS   300               /* 标题入场时长              */
 
-/* ---- 工具: 计算每个象限格的左上角坐标 ---- */
+/* 入场: Q1 最快 → Q4 最慢, Q3→Q4 间距拉大 */
+#define QUAD_ENTER_DUR_Q1     300               /* Q1 水平滑入时长           */
+#define QUAD_ENTER_DELAY_Q1   0                 /* Q1 延迟                   */
+#define QUAD_ENTER_DUR_Q2     330               /* Q2 水平滑入时长           */
+#define QUAD_ENTER_DELAY_Q2   70                /* Q2 延迟                   */
+#define QUAD_ENTER_DUR_Q3     360               /* Q3 斜向滑入时长           */
+#define QUAD_ENTER_DELAY_Q3   170               /* Q3 延迟                   */
+#define QUAD_ENTER_DUR_Q4     390               /* Q4 斜向滑入时长           */
+#define QUAD_ENTER_DELAY_Q4   290               /* Q4 延迟 (与 Q3 间距拉大)  */
+
+/* ---- 退场动画时长 (ms, Q4 最快 → Q1 最慢) ---- */
+#define QUAD_EXIT_TITLE_MS    210               /* 标题退场                  */
+#define QUAD_EXIT_DUR_Q1      300               /* Q1 退场最慢               */
+#define QUAD_EXIT_DUR_Q2      240
+#define QUAD_EXIT_DUR_Q3      170
+#define QUAD_EXIT_DUR_Q4      110               /* Q4 退场最快               */
+
+/* ---- 入场起点偏移量 (运动范围调大) ---- */
+#define QUAD_OFFSCREEN_L      (-50)             /* 左侧出屏偏移              */
+#define QUAD_OFFSCREEN_R      128               /* 右侧出屏 X                */
+#define QUAD_OFFSCREEN_B      64                /* 底部出屏 Y                */
+#define QUAD_BELOW_OFFSET     20                /* 下方额外偏移              */
+
+/* ---- 工具: 计算每个象限格的目标左上角坐标 ---- */
 static void quad_cell_pos(uint8_t idx, int16_t *cx, int16_t *cy) {
     /* idx: 0=左上, 1=右上, 2=左下, 3=右下 */
     *cx = (idx & 1) ? QUAD_COL2_X : 1;
@@ -241,9 +270,10 @@ void meter_quad_init(meter_quad_state_t *s) {
     anim_init(&s->title_y);
     anim_set_position(&s->title_y, 0, QUAD_TITLE_H - 1);
     for (int i = 0; i < METER_QUAD_MAX_ITEMS; i++) {
+        anim_init(&s->item_x[i]);
+        anim_set_position(&s->item_x[i], 0, 0);
         anim_init(&s->item_y[i]);
         anim_set_position(&s->item_y[i], 0, 0);
-        s->cell_x[i] = 0;
     }
 }
 
@@ -256,17 +286,67 @@ void meter_quad_open(meter_quad_state_t *s, const meter_quad_page_t *page) {
     s->trans = METER_QUAD_ENTER;
 
     /* 标题: 从上方飞入 */
-    anim_start(&s->title_y, 0, -12, 0, QUAD_TITLE_H - 1,
+    anim_start(&s->title_y, 0, -14, 0, QUAD_TITLE_H - 1,
                QUAD_ENTER_TITLE_MS, quad_ease_out);
 
-    /* 每象限: 从下方滑入 (stagger) */
-    for (uint8_t i = 0; i < page->count && i < METER_QUAD_MAX_ITEMS; i++) {
-        int16_t cx, cy;
-        quad_cell_pos(i, &cx, &cy);
-        s->cell_x[i] = cx;
-        uint32_t dur = (uint32_t)QUAD_ENTER_ITEM_MS + (uint32_t)i * QUAD_ENTER_STEP_MS;
-        /* 从目标位置下方 12px 滑入 */
-        anim_start(&s->item_y[i], 0, cy + 12, 0, cy, dur, quad_ease_out);
+    if (page->count < 1) return;
+
+    /* ---- 四个象限独立入场动画 ---- */
+
+    /* Q1 (idx=0): 从左侧边缘水平滑入 */
+    {
+        int16_t tx, ty;
+        quad_cell_pos(0, &tx, &ty);
+        anim_start(&s->item_x[0], QUAD_OFFSCREEN_L, 0, tx, 0,
+                   QUAD_ENTER_DUR_Q1 + QUAD_ENTER_DELAY_Q1, quad_ease_out);
+        anim_set_position(&s->item_y[0], 0, ty);  /* Y 直接到位, 不动画 */
+    }
+
+    /* Q2 (idx=1): 从右侧边缘水平滑入 */
+    if (page->count > 1) {
+        int16_t tx, ty;
+        quad_cell_pos(1, &tx, &ty);
+        anim_start(&s->item_x[1], QUAD_OFFSCREEN_R, 0, tx, 0,
+                   QUAD_ENTER_DUR_Q2 + QUAD_ENTER_DELAY_Q2, quad_ease_out);
+        anim_set_position(&s->item_y[1], 0, ty);
+    }
+
+    /* Q3 (idx=2): 从左下角斜向滑入 */
+    if (page->count > 2) {
+        int16_t tx, ty;
+        quad_cell_pos(2, &tx, &ty);
+        anim_start(&s->item_x[2],
+                   QUAD_OFFSCREEN_L, 0,
+                   tx, 0,
+                   QUAD_ENTER_DUR_Q3 + QUAD_ENTER_DELAY_Q3, quad_ease_out);
+    }
+
+    /* Q4 (idx=3): 从右下角斜向滑入 (间距拉大) */
+    if (page->count > 3) {
+        int16_t tx, ty;
+        quad_cell_pos(3, &tx, &ty);
+        anim_start(&s->item_x[3],
+                   QUAD_OFFSCREEN_R, 0,
+                   tx, 0,
+                   QUAD_ENTER_DUR_Q4 + QUAD_ENTER_DELAY_Q4, quad_ease_out);
+    }
+
+    /* Q3/Q4 的 Y 动画需要独立启动 (斜向 = X+Y 同时) */
+    if (page->count > 2) {
+        int16_t tx, ty;
+        quad_cell_pos(2, &tx, &ty);
+        anim_start(&s->item_y[2],
+                   0, QUAD_OFFSCREEN_B + QUAD_BELOW_OFFSET,
+                   0, ty,
+                   QUAD_ENTER_DUR_Q3 + QUAD_ENTER_DELAY_Q3, quad_ease_out);
+    }
+    if (page->count > 3) {
+        int16_t tx, ty;
+        quad_cell_pos(3, &tx, &ty);
+        anim_start(&s->item_y[3],
+                   0, QUAD_OFFSCREEN_B + QUAD_BELOW_OFFSET,
+                   0, ty,
+                   QUAD_ENTER_DUR_Q4 + QUAD_ENTER_DELAY_Q4, quad_ease_out);
     }
 }
 
@@ -275,13 +355,52 @@ void meter_quad_close(meter_quad_state_t *s) {
     s->trans = METER_QUAD_EXIT;
 
     /* 标题滑出 */
-    anim_start(&s->title_y, 0, s->title_y.cur_y, 0, -12,
-               QUAD_EXIT_MS, quad_ease_out);
+    anim_start(&s->title_y, 0, s->title_y.cur_y, 0, -14,
+               QUAD_EXIT_TITLE_MS, quad_ease_out);
 
-    /* 象限向下滑出 */
-    for (uint8_t i = 0; i < s->page->count && i < METER_QUAD_MAX_ITEMS; i++) {
-        anim_start(&s->item_y[i], 0, s->item_y[i].cur_y,
-                   0, s->item_y[i].cur_y + 12, QUAD_EXIT_MS, quad_ease_out);
+    /* 退场: Q4 最快 → Q1 最慢 (反向差异化) */
+    uint8_t n = s->page->count;
+
+    /* Q4 退场 (最快: 斜向右下) */
+    if (n > 3) {
+        int16_t tx, ty;
+        quad_cell_pos(3, &tx, &ty);
+        anim_start(&s->item_x[3], s->item_x[3].cur_x, 0,
+                   QUAD_OFFSCREEN_R, 0,
+                   QUAD_EXIT_DUR_Q4, quad_ease_out);
+        anim_start(&s->item_y[3], 0, s->item_y[3].cur_y,
+                   0, QUAD_OFFSCREEN_B + QUAD_BELOW_OFFSET,
+                   QUAD_EXIT_DUR_Q4, quad_ease_out);
+    }
+
+    /* Q3 退场 (斜向左下) */
+    if (n > 2) {
+        int16_t tx, ty;
+        quad_cell_pos(2, &tx, &ty);
+        anim_start(&s->item_x[2], s->item_x[2].cur_x, 0,
+                   QUAD_OFFSCREEN_L, 0,
+                   QUAD_EXIT_DUR_Q3, quad_ease_out);
+        anim_start(&s->item_y[2], 0, s->item_y[2].cur_y,
+                   0, QUAD_OFFSCREEN_B + QUAD_BELOW_OFFSET,
+                   QUAD_EXIT_DUR_Q3, quad_ease_out);
+    }
+
+    /* Q2 退场 (水平向右) */
+    if (n > 1) {
+        int16_t tx, ty;
+        quad_cell_pos(1, &tx, &ty);
+        anim_start(&s->item_x[1], s->item_x[1].cur_x, 0,
+                   QUAD_OFFSCREEN_R, 0,
+                   QUAD_EXIT_DUR_Q2, quad_ease_out);
+    }
+
+    /* Q1 退场最慢 (水平向左) */
+    {
+        int16_t tx, ty;
+        quad_cell_pos(0, &tx, &ty);
+        anim_start(&s->item_x[0], s->item_x[0].cur_x, 0,
+                   QUAD_OFFSCREEN_L, 0,
+                   QUAD_EXIT_DUR_Q1, quad_ease_out);
     }
 }
 
@@ -289,19 +408,16 @@ void meter_quad_update(meter_quad_state_t *s) {
     if (s->trans == METER_QUAD_ENTER) {
         uint8_t n = s->page->count;
         if (n == 0) { s->trans = METER_QUAD_ACTIVE; return; }
+        /* 入场: Q4 最后完成 → 等 Q4 的 X/Y 动画结束 */
         uint8_t last = n - 1;
         if (last >= METER_QUAD_MAX_ITEMS) last = METER_QUAD_MAX_ITEMS - 1;
-        if (s->item_y[last].state == ANIM_FINISHED ||
-            s->item_y[last].state == ANIM_IDLE)
+        if ((s->item_x[last].state == ANIM_FINISHED || s->item_x[last].state == ANIM_IDLE) &&
+            (s->item_y[last].state == ANIM_FINISHED || s->item_y[last].state == ANIM_IDLE))
             s->trans = METER_QUAD_ACTIVE;
 
     } else if (s->trans == METER_QUAD_EXIT) {
-        uint8_t n = s->page->count;
-        if (n == 0) { s->trans = METER_QUAD_IDLE; return; }
-        uint8_t last = n - 1;
-        if (last >= METER_QUAD_MAX_ITEMS) last = METER_QUAD_MAX_ITEMS - 1;
-        if (s->item_y[last].state == ANIM_FINISHED ||
-            s->item_y[last].state == ANIM_IDLE) {
+        /* 退场: Q1 最慢 → 等 Q1 完成 */
+        if (s->item_x[0].state == ANIM_FINISHED || s->item_x[0].state == ANIM_IDLE) {
             s->trans = METER_QUAD_IDLE;
             s->page  = NULL;
         }
@@ -336,34 +452,35 @@ void meter_quad_render(const meter_quad_state_t *s, u8g2_t *u8g2) {
     /* ---- 四个象限 ---- */
     for (uint8_t i = 0; i < page->count && i < METER_QUAD_MAX_ITEMS; i++) {
         const meter_quad_item_t *item = &page->items[i];
-        int16_t cx = s->cell_x[i];
-        int16_t cy = s->item_y[i].cur_y;   /* 动画后的格子顶部 Y */
+        int16_t cx = s->item_x[i].cur_x;     /* 动画后的格子 X 坐标 */
+        int16_t cy = s->item_y[i].cur_y;     /* 动画后的格子 Y 坐标 */
 
         /*
          * 格子内布局 (QUAD_CELL_W x QUAD_CELL_H = 63 x 25):
          *   ┌──────────┐
-         *   │  label   │  ← helvB08, Y = cell_top + 8
-         *   │  **25**°C│  ← helvB14 (数值) + 6x10 (单位下标)
-         *   └──────────┘    数值 Y = cell_top + 22, 单位 Y = cell_top + 23
+         *   │  label   │  ← helvB08, Y = cell_top + 6
+         *   │           │
+         *   │   25 °C  │  ← helvB12 + 6x10, Y = cell_top + 23
+         *   └──────────┘
          */
 
-        /* 参数名称 — 顶部居中 (小字) */
+        /* 参数名称 — 顶部居中 (小字, 偏上) */
         u8g2_SetFont(u8g2, u8g2_font_helvB08_tr);
         u8g2_SetDrawColor(u8g2, 1);
         {
             u8g2_uint_t lw = u8g2_GetStrWidth(u8g2, item->label);
             int16_t lx = cx + (int16_t)(QUAD_CELL_W - lw) / 2;
             if (lx < cx) lx = cx;
-            u8g2_DrawStr(u8g2, (u8g2_uint_t)lx, cy + 8, item->label);
+            u8g2_DrawStr(u8g2, (u8g2_uint_t)lx, cy + 6, item->label);
         }
 
-        /* 数值 (大字粗体 14px) + 单位 (小字下标 10px) */
+        /* 数值 (中等粗体 12px) + 单位 (小字角标) */
         {
             char vbuf[8];
             snprintf(vbuf, sizeof(vbuf), "%d", *item->value);
 
             /* 测量宽度以实现整体居中 */
-            u8g2_SetFont(u8g2, u8g2_font_helvB14_tr);
+            u8g2_SetFont(u8g2, u8g2_font_helvB12_tr);
             u8g2_uint_t vw = u8g2_GetStrWidth(u8g2, vbuf);
             u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
             u8g2_uint_t uw = item->unit ? u8g2_GetStrWidth(u8g2, item->unit) : 0;
@@ -373,14 +490,14 @@ void meter_quad_render(const meter_quad_state_t *s, u8g2_t *u8g2) {
             int16_t gx = cx + (int16_t)(QUAD_CELL_W - total_w) / 2;
             if (gx < cx) gx = cx;
 
-            /* 数值 (大字) */
-            u8g2_SetFont(u8g2, u8g2_font_helvB14_tr);
-            u8g2_DrawStr(u8g2, (u8g2_uint_t)gx, cy + 22, vbuf);
+            /* 数值 (中等大小) */
+            u8g2_SetFont(u8g2, u8g2_font_helvB12_tr);
+            u8g2_DrawStr(u8g2, (u8g2_uint_t)gx, cy + 23, vbuf);
 
-            /* 单位 (小字, 基线偏移 +1px 产生角标效果) */
+            /* 单位 (小字角标) */
             if (item->unit && uw > 0) {
                 u8g2_SetFont(u8g2, u8g2_font_6x10_tr);
-                u8g2_DrawStr(u8g2, (u8g2_uint_t)(gx + vw + gap), cy + 22, item->unit);
+                u8g2_DrawStr(u8g2, (u8g2_uint_t)(gx + vw + gap), cy + 23, item->unit);
             }
         }
     }
