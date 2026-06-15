@@ -12,7 +12,7 @@
 |------|------|
 | **菜单** | 文字垂直列表 + 图标水平菜单（四角直角选中框），均带独立过渡动画 |
 | **弹窗** | 数值调节、开关切换、Toast 通知、确认对话框，统一管理器调度 |
-| **仪表盘** | 标签+实时数值+动画进度条，入场 stagger 飞入效果 |
+| **仪表盘** | 两种类型：进度条型 (标签+实时数值+动画进度条) 与四象限型 (纯数值大字+角标单位)，均为差异化入场动画 |
 | **自定义界面** | 开发者自由绘制回调，Back 键返回菜单 |
 | **过渡动画** | 菜单 ↔ 子菜单、菜单 ↔ 外部组件，全路径衔接，无硬切 |
 | **启动动画** | "power by OPEN MCU UI" 飞入/静止/飞出 Splash |
@@ -64,7 +64,7 @@ GUI_demo/
 │   │   ├── Inc/
 │   │   │   ├── user_func.h          ← 开发者唯一入口
 │   │   │   ├── menu.h            ← 菜单数据结构 + 宏
-│   │   │   ├── meter.h           ← 仪表盘数据 + API
+│   │   │   ├── meter.h               ← 仪表盘 (bar 型 + quad 型) 数据 + API
 │   │   │   ├── popup.h           ← 弹窗管理器 + value/toggle/toast
 │   │   │   ├── popup_confirm.h   ← 确认对话框
 │   │   │   ├── anim_engine.h         ← 动画引擎
@@ -155,17 +155,38 @@ static void cb_confirm(void)       { UI_popup_confirm_open("Sure?", cb_confirm_o
 
 ### 5.4 仪表盘
 
-```c
-static int16_t g_temp = 23, g_humi = 67;
+**进度条型 (meter_bar)** — 标签 + 实时数值 + 动画进度条：
 
-static meter_page_t dash =
-    METER_PAGE("Dashboard",
-        { "Temperature", &g_temp, 0, 60,  "C", 5 },
-        { "Humidity",    &g_humi, 0, 100, "%", 5 },
+```c
+static int16_t g_temp = 23, g_humi = 67, g_volt = 330;
+
+static meter_bar_page_t dash_bar =
+    METER_BAR_PAGE("Bar Dashboard",
+        { "Temperature", &g_temp, 0,   60,  "C",  5 },
+        { "Humidity",    &g_humi, 0,  100,  "%",  5 },
+        { "Voltage",     &g_volt, 200, 500, "mV", 5 },
     );
 
-static void cb_dash(void) { UI_meter_open(&dash); }
+static void cb_dash_bar(void) { UI_meter_bar_open(&dash_bar); }
 ```
+
+**四象限型 (meter_quad)** — 纯数值展示，大字居中突出，单位角标，2×2 网格分布：
+
+```c
+static int16_t g_temp = 30, g_humi = 67, g_press = 1013, g_rpm = 2750;
+
+static meter_quad_page_t dash_quad =
+    METER_QUAD_PAGE("Quad Monitor",
+        { "Temperature", &g_temp,  "°C"  },
+        { "Humidity",    &g_humi,  "%"   },
+        { "Pressure",    &g_press, "hPa" },
+        { "Motor RPM",   &g_rpm,   "rpm" },
+    );
+
+static void cb_dash_quad(void) { UI_meter_quad_open(&dash_quad); }
+```
+
+两种仪表盘都支持 0~4 项，实际渲染数量由宏自动计算。两者共用 Back 键退出，退场自动播放反向动画并返回菜单。
 
 ### 5.5 自定义界面
 
@@ -187,7 +208,8 @@ static void cb_screen1(void) { UI_screen_enter(1); }
 | 函数 | 说明 |
 |------|------|
 | `UI_screen_enter(id)` | 进入自定义界面（菜单退场 → 自定义即时出现） |
-| `UI_meter_open(page)` | 进入仪表盘（菜单退场 → 仪表盘入场动画） |
+| `UI_meter_bar_open(page)` | 进入进度条型仪表盘（菜单退场 → 入场 stagger 动画） |
+| `UI_meter_quad_open(page)` | 进入四象限型仪表盘（菜单退场 → 差异化方向入场动画） |
 
 ### 弹窗
 
@@ -244,7 +266,7 @@ SCR_MENU ◀──done── SCR_MENU_ENTERING ◀──done─── SCR_TARGET
 |------|---------|
 | `Core/UI/Inc/anitime_config.h` | 菜单、弹窗、Splash 全局时长 |
 | `Core/UI/Src/menu.c` 宏 | 图标入场 stagger 延时 |
-| `Core/UI/Src/meter.c` 宏 | 仪表盘入场 stagger 延时 |
+| `Core/UI/Src/meter.c` 宏 | 仪表盘 bar 型/quad 型入场退场时长与方向 |
 
 ---
 

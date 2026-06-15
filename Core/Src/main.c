@@ -147,9 +147,9 @@ static menu_page_t display_page =
 
 static menu_page_t about_page =
     MENU_PAGE_TEXT("About", &root_page,
-        { "STM32F103 GUI Demo Project v4.0",          {0}, NULL, NULL },
+        { "STM32F103 GUI Demo Project v4.1",          {0}, NULL, NULL },
         { "u8g2 Library + SSD1306 OLED Display",      {0}, NULL, NULL },
-        { "Build Date: 2026-06-08",                   {0}, NULL, NULL },
+        { "Build Date: 2026-06-15",                   {0}, NULL, NULL },
     );
 
 /* ---- 图标菜单页 (水平排列, 全白测试位图) ---- */
